@@ -13,10 +13,10 @@ export const dynamic = 'force-dynamic'
 export default async function Home({ searchParams }: PageProps) {
     const activeFieldId = searchParams && typeof searchParams === 'object' ? searchParams.field : undefined
 
-    const fields = await getFields()
+    const fields = (await getFields()) || []
     const simpleFields: SimpleField[] = fields.map(f => ({ id: f.id, name: f.name }))
 
-    const allMaterials = await getMaterials()
+    const allMaterials = (await getMaterials()) || []
     const displayFields = activeFieldId ? fields.filter(f => f.id === activeFieldId) : fields
 
     return (

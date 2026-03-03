@@ -25,9 +25,14 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
+    console.log('--- Signup Attempt ---')
     const supabase = await createClient()
     const email = formData.get('email') as string
     const password = formData.get('password') as string
+
+    if (!email || !password) {
+        throw new Error("メールアドレスとパスワードを入力してください")
+    }
 
     const { error } = await supabase.auth.signUp({
         email,
@@ -35,9 +40,11 @@ export async function signup(formData: FormData) {
     })
 
     if (error) {
+        console.error('Supabase Signup Error:', error.message)
         throw new Error(error.message)
     }
 
+    console.log('Signup success - Revalidating and redirecting')
     revalidatePath('/', 'layout')
     redirect('/')
 }
