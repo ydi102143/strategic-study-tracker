@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+    --color-surface-0: #0a0a0a;
+    --color-surface-1: #111111;
+    --color-surface-2: #1a1a1a;
+    --color-surface-3: #242424;
+}
+
+@layer base {
+    body {
+        background-color: var(--color-surface-0);
+        color: white;
+        min-height: 100vh;
+        /* フォントは layout.tsx の next/font/google で管理 */
+        -webkit-font-smoothing: antialiased;
+    }
+}
+
+@layer components {
+
+    /* スクロールバー非表示 (iPad/最適化) */
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}

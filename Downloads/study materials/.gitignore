@@ -1,0 +1,28 @@
+node_modules
+.next
+dist-electron
+release
+
+# ログファイル
+*.log
+
+# SQLite データベース（個人の学習データは含めない）
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# 環境変数
+.env
+.env.local
+.env.*
+
+# Antigravity/System files
+.gemini/
+.agents/
+.agent/
+err.txt
+build.log
+next-build-error.log
+*.log
+tsconfig.tsbuildinfo
