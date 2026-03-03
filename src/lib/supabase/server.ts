@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
-    const cookieStore = cookies() // Next.js 14 では await 不要
+    const cookieStore = cookies()
 
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,16 +14,16 @@ export async function createClient() {
                 },
                 set(name: string, value: string, options: any) {
                     try {
-                        cookieStore.set({ name, value, ...options })
+                        cookieStore.set(name, value, options)
                     } catch (error) {
-                        // Server Component からの呼び出しは無視
+                        // Server Component
                     }
                 },
                 remove(name: string, options: any) {
                     try {
-                        cookieStore.set({ name, value: '', ...options })
+                        cookieStore.set(name, '', { ...options, maxAge: 0 })
                     } catch (error) {
-                        // Server Component からの呼び出しは無視
+                        // Server Component
                     }
                 },
             },
