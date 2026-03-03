@@ -8,8 +8,12 @@ export async function middleware(request: NextRequest) {
         },
     })
 
-    // 環境変数が設定されていない場合の安全策
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const { pathname } = request.nextUrl
+    const isAuthPage = pathname.startsWith('/login')
+    const isPublicFile = pathname.includes('.') // manifest.json, favicon.ico など
+
+    // 環境変数が設定されていない、または静的ファイルの場合はスキップ
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || isPublicFile) {
         return response
     }
 
@@ -22,7 +26,7 @@ export async function middleware(request: NextRequest) {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
                     response = NextResponse.next({
                         request: {
                             headers: request.headers,
@@ -40,20 +44,18 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    console.log('Middleware Path:', request.nextUrl.pathname, 'User:', user?.email || 'None')
-
-    // 認証が必要なページへのアクセスで、ユーザーがいない場合はログイン画面へ
-    const isAuthPage = request.nextUrl.pathname.startsWith('/login')
-
+    // 未ログインでログインページ以外にいる場合は、ログインページへ
     if (!user && !isAuthPage) {
-        console.log('No user, redirecting to /login')
-        return NextResponse.redirect(new URL('/login', request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
     }
 
-    // すでにログインしているのにログイン画面を見ようとした場合はトップへ
+    // ログイン済みでログインページにいる場合は、トップへ
     if (user && isAuthPage) {
-        console.log('User logged in, redirecting to /')
-        return NextResponse.redirect(new URL('/', request.url))
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
     }
 
     return response
@@ -62,13 +64,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
     matcher: [
         /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - manifest.json (PWA manifest)
-         * - icons/ (PWA icons)
+         * _next/static, _next/image などを除外
          */
-        '/((?!_next/static|_next/image|favicon.ico|manifest.json|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|manifest.json|icons/).*)',
     ],
 }
