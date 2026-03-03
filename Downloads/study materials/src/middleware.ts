@@ -46,16 +46,19 @@ export async function middleware(request: NextRequest) {
 
     // 未ログインでログインページ以外にいる場合は、ログインページへ
     if (!user && !isAuthPage) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        return NextResponse.redirect(url)
+        const loginUrl = request.nextUrl.clone()
+        loginUrl.pathname = '/login'
+        // クエリパラメータをクリアしてループを防ぐ
+        loginUrl.search = ''
+        return NextResponse.redirect(loginUrl)
     }
 
     // ログイン済みでログインページにいる場合は、トップへ
     if (user && isAuthPage) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/'
-        return NextResponse.redirect(url)
+        const homeUrl = request.nextUrl.clone()
+        homeUrl.pathname = '/'
+        homeUrl.search = ''
+        return NextResponse.redirect(homeUrl)
     }
 
     return response
