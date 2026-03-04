@@ -31,6 +31,7 @@ export default function AddTextbookModal({ isOpen, onClose, fields: initialField
 
     // Default values
     const [totalPages, setTotalPages] = useState<number>(type === 'TEXTBOOK' ? 100 : 10)
+    const [url, setUrl] = useState('')
 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -75,7 +76,7 @@ export default function AddTextbookModal({ isOpen, onClose, fields: initialField
                 type,
                 cover_url: coverImageUrl,
                 total_pages: totalPages,
-                video_path: type === 'MOVIE' || type === 'WEBSITE' ? videoUrl : undefined,
+                video_path: url, // Now uses the 'url' state
                 parent_id: parentId
             })
 
@@ -246,6 +247,22 @@ export default function AddTextbookModal({ isOpen, onClose, fields: initialField
                             placeholder="100"
                         />
                     </div>
+
+                    {/* URL for MOVIE/WEBSITE */}
+                    {(type === 'MOVIE' || type === 'WEBSITE') && (
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                                {type === 'MOVIE' ? '動画のURL (YouTube等)' : 'サイトのURL'}
+                            </label>
+                            <input
+                                type="text"
+                                value={url}
+                                onChange={e => setUrl(e.target.value)}
+                                className="w-full bg-surface-2 border border-surface-3 rounded-xl px-4 py-3 text-white outline-none focus:border-white/50 transition"
+                                placeholder="https://example.com/..."
+                            />
+                        </div>
+                    )}
 
                     {/* PDF Upload for TEXTBOOK */}
                     {type === 'TEXTBOOK' && (
