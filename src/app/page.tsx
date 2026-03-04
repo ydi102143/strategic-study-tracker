@@ -7,19 +7,39 @@ import { OnboardingModal } from '@/components/OnboardingModal'
 import { BookOpen, Video } from 'lucide-react'
 
 interface PageProps {
-    searchParams: { field?: string }
+    searchParams: { [key: string]: string | string[] | undefined }
 }
 
 export const dynamic = 'force-dynamic'
 
 export default async function Home({ searchParams }: PageProps) {
-    const activeFieldId = searchParams && typeof searchParams === 'object' ? searchParams.field : undefined
+    const activeFieldId = searchParams && typeof searchParams === 'object' ? (searchParams.field as string) : undefined
 
-    const fields = (await getFields()) || []
-    const simpleFields: SimpleField[] = fields.map(f => ({ id: f.id, name: f.name }))
+    // 強力なフォールバック
+    let fields: any[] = []
+    let allMaterials: any[] = []
 
-    const allMaterials = (await getMaterials()) || []
-    const displayFields = activeFieldId ? fields.filter(f => f.id === activeFieldId) : fields
+    try {
+        fields = (await getFields()) || []
+    } catch (e) {
+        console.error('Failed to fetch fields:', e)
+        fields = []
+    }
+
+    try {
+        allMaterials = (await getMaterials()) || []
+    } catch (e) {
+        console.error('Failed to fetch materials:', e)
+        allMaterials = []
+    }
+
+    const simpleFields: SimpleField[] = fields
+        .filter(f => f && f.id && f.name) // 不正なデータを排除
+        .map(f => ({ id: f.id, name: f.name }))
+
+    const displayFields = activeFieldId
+        ? fields.filter(f => f && f.id === activeFieldId)
+        : fields.filter(f => f && f.id && f.name)
 
     return (
         <>
@@ -41,11 +61,13 @@ export default async function Home({ searchParams }: PageProps) {
                 {displayFields.length === 0 ? (
                     <div className="py-20 text-center border-2 border-dashed border-surface-3 rounded-3xl">
                         <h2 className="text-2xl font-bold uppercase tracking-widest text-gray-500">分野が見つかりません</h2>
-                        <p className="text-gray-600 mt-3 text-sm">「教材を追加」ボタンから最初の教材を登録してください</p>
+                        <p className="text-gray-600 mt-3 text-sm">「教材を追加」ボタンから最初の教材を記録してください</p>
                     </div>
                 ) : (
                     displayFields.map(field => {
-                        const fieldMaterials = allMaterials.filter(t => t.field_id === field.id)
+                        if (!field || !field.id) return null
+
+                        const fieldMaterials = allMaterials.filter(t => t && t.field_id === field.id)
                         const textbooks = fieldMaterials.filter(t => t.type === 'TEXTBOOK')
                         const movies = fieldMaterials.filter(t => t.type === 'MOVIE')
 

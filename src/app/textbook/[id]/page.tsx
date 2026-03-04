@@ -6,6 +6,7 @@ import { UploadPdfButton } from '@/components/UploadPdfButton'
 import UploadVideoButton from '@/components/UploadVideoButton'
 import DeleteMaterialButton from '@/components/DeleteMaterialButton'
 import UploadCoverButton from '@/components/UploadCoverButton'
+import { MovieProgressTracker } from '@/components/MovieProgressTracker'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,30 +95,11 @@ export default async function MaterialDetail({ params }: Props) {
                             </div>
                         </div>
                     ) : (
-                        <div className="pt-6">
-                            <div className="flex justify-between items-end mb-3">
-                                <span className="text-xs font-bold tracking-widest uppercase text-gray-400">
-                                    講義：第 {material.current_page} 回 / 全 {material.total_pages} 回
-                                </span>
-                                <span className="text-xl font-black font-mono tracking-wider">{Math.round(progressPercent)}%</span>
-                            </div>
-                            <div className="h-2 bg-surface-3 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-white transition-all duration-1000 ease-out"
-                                    style={{ width: `${progressPercent}%` }}
-                                />
-                            </div>
-                            <div className="mt-4 flex gap-2">
-                                <button
-                                    onClick={async () => {
-                                        const newPage = Math.min(material.total_pages, material.current_page + 1)
-                                        // actions.ts の updateProgress を直接呼び出すにはクライアントコンポーネント化が必要
-                                        // ここでは一旦そのまま
-                                    }}
-                                    className="hidden" // UIの実装は後ほど
-                                />
-                            </div>
-                        </div>
+                        <MovieProgressTracker
+                            materialId={material.id}
+                            currentPage={material.current_page || 0}
+                            totalPages={material.total_pages || 1}
+                        />
                     )}
 
                     {/* アクションボタン */}
