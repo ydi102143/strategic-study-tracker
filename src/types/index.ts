@@ -12,7 +12,8 @@ export interface Material {
     user_id: string
     field_id: string
     title: string
-    type: 'TEXTBOOK' | 'MOVIE' | 'WEBSITE'
+    type: 'TEXTBOOK' | 'MOVIE' | 'WEBSITE' | 'COURSE'
+    parent_id: string | null
     cover_url: string | null
     pdf_path: string | null
     video_path: string | null

@@ -4,7 +4,7 @@ import { TextbookCard } from '@/components/TextbookGrid'
 import { AddTextbookButton } from '@/components/AddTextbookButton'
 import { FieldSettings } from '@/components/FieldSettings'
 import { OnboardingModal } from '@/components/OnboardingModal'
-import { BookOpen, Video, Image as ImageIcon } from 'lucide-react'
+import { BookOpen, Video, Image as ImageIcon, LayoutGrid } from 'lucide-react'
 
 interface PageProps {
     searchParams: { [key: string]: string | string[] | undefined }
@@ -67,7 +67,9 @@ export default async function Home({ searchParams }: PageProps) {
                     displayFields.map(field => {
                         if (!field || !field.id) return null
 
-                        const fieldMaterials = allMaterials.filter(t => t && t.field_id === field.id)
+                        // Filter materials that belong to this field AND are top-level items (no parent_id)
+                        const fieldMaterials = allMaterials.filter(t => t && t.field_id === field.id && !t.parent_id)
+                        const courses = fieldMaterials.filter(t => t.type === 'COURSE')
                         const textbooks = fieldMaterials.filter(t => t.type === 'TEXTBOOK')
                         const movies = fieldMaterials.filter(t => t.type === 'MOVIE')
                         const websites = fieldMaterials.filter(t => t.type === 'WEBSITE')
@@ -82,6 +84,18 @@ export default async function Home({ searchParams }: PageProps) {
                                     <FieldSettings field={field} />
                                     <div className="h-[2px] flex-1 bg-surface-3" />
                                 </div>
+
+                                {courses.length > 0 && (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-center gap-3 text-orange-400">
+                                            <LayoutGrid size={20} />
+                                            <span className="text-sm font-bold uppercase tracking-widest">講座</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            {courses.map(tb => <TextbookCard key={tb.id} material={tb} />)}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {textbooks.length > 0 && (
                                     <div className="space-y-6">

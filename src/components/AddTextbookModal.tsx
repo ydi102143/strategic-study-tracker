@@ -7,19 +7,22 @@ import { useRouter } from 'next/navigation'
 
 interface SimpleField { id: string; name: string }
 
-interface Props {
-    initialFields: SimpleField[]
+interface AddTextbookModalProps {
+    isOpen: boolean
     onClose: () => void
+    fields: SimpleField[]
+    materialId?: string // Used when updating
+    parentId?: string    // Used when adding into a course
 }
 
-export function AddTextbookModal({ initialFields, onClose }: Props) {
+export default function AddTextbookModal({ isOpen, onClose, fields: initialFields, parentId }: AddTextbookModalProps) {
     const router = useRouter()
     const [title, setTitle] = useState('')
-    const [fields, setFields] = useState<SimpleField[]>(initialFields)
+    const [fields, setFields] = useState<SimpleField[]>(initialFields) // Keep this for dynamic field creation
     const [fieldId, setFieldId] = useState(initialFields[0]?.id ?? '')
     const [newFieldName, setNewFieldName] = useState('')
     const [isCreatingField, setIsCreatingField] = useState(false)
-    const [type, setType] = useState<'TEXTBOOK' | 'MOVIE' | 'WEBSITE'>('TEXTBOOK')
+    const [type, setType] = useState<'TEXTBOOK' | 'MOVIE' | 'WEBSITE' | 'COURSE'>('TEXTBOOK')
     const [coverImageUrl, setCoverImageUrl] = useState('')
     const [videoUrl, setVideoUrl] = useState('')
     const [coverFile, setCoverFile] = useState<File | null>(null)
@@ -72,7 +75,8 @@ export function AddTextbookModal({ initialFields, onClose }: Props) {
                 type,
                 cover_url: coverImageUrl,
                 total_pages: totalPages,
-                video_path: type === 'MOVIE' || type === 'WEBSITE' ? videoUrl : undefined
+                video_path: type === 'MOVIE' || type === 'WEBSITE' ? videoUrl : undefined,
+                parent_id: parentId
             })
 
             // 2. カバー画像が選択されていればアップロード
@@ -218,6 +222,10 @@ export function AddTextbookModal({ initialFields, onClose }: Props) {
                             <button type="button" onClick={() => setType('WEBSITE')}
                                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border font-bold text-sm transition ${type === 'WEBSITE' ? 'bg-white text-black border-white' : 'bg-surface-2 text-gray-400 border-surface-3 hover:border-white/30'}`}>
                                 <ImageIcon size={16} />参考サイト
+                            </button>
+                            <button type="button" onClick={() => setType('COURSE')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border font-bold text-sm transition ${type === 'COURSE' ? 'bg-white text-black border-white' : 'bg-surface-2 text-gray-400 border-surface-3 hover:border-white/30'}`}>
+                                <BookOpen size={16} />講座
                             </button>
                         </div>
                     </div>

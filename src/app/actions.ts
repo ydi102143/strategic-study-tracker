@@ -157,11 +157,12 @@ export async function deleteField(id: string) {
 export async function createMaterial(inputData: {
     title: string
     field_id: string
-    type: 'TEXTBOOK' | 'MOVIE' | 'WEBSITE'
+    type: 'TEXTBOOK' | 'MOVIE' | 'WEBSITE' | 'COURSE'
     cover_url?: string
     total_pages?: number
     pdf_path?: string
     video_path?: string
+    parent_id?: string
 }) {
     const supabase = await createClient()
     const { data: authData } = await supabase.auth.getUser()
@@ -178,7 +179,8 @@ export async function createMaterial(inputData: {
             cover_url: inputData.cover_url || 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=500&q=80',
             total_pages: inputData.total_pages || 0,
             pdf_path: inputData.pdf_path || null,
-            video_path: inputData.video_path || null
+            video_path: inputData.video_path || null,
+            parent_id: inputData.parent_id || null
         })
         .select()
         .single()
@@ -382,4 +384,18 @@ export async function deleteMaterial(id: string) {
 
     revalidatePath('/')
     redirect('/')
+}
+export async function getCourseMaterials(courseId: string) {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('materials')
+        .select('*, fields(name)')
+        .eq('parent_id', courseId)
+        .order('created_at', { ascending: true })
+
+    if (error) {
+        console.error('Fetch course materials error:', error)
+        return []
+    }
+    return data as Material[]
 }

@@ -2,28 +2,29 @@
 
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
-import { AddTextbookModal } from './AddTextbookModal'
+import AddTextbookModal from './AddTextbookModal'
 
 interface SimpleField { id: string; name: string }
 
-export function AddTextbookButton({ fields }: { fields: SimpleField[] }) {
-    const [open, setOpen] = useState(false)
+export function AddTextbookButton({ fields, parentId }: { fields: SimpleField[], parentId?: string }) {
+    const [isOpen, setIsOpen] = useState(false)
 
     return (
         <>
             <button
-                onClick={() => setOpen(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-black font-bold uppercase tracking-widest text-sm rounded-full hover:bg-gray-200 transition-all shadow-lg hover:-translate-y-0.5"
+                onClick={() => setIsOpen(true)}
+                className={`flex items-center gap-2 font-black uppercase tracking-widest text-xs transition-all active:scale-95 ${parentId ? 'bg-white text-black px-6 py-3 rounded-xl shadow-lg hover:shadow-xl' : 'text-gray-400 hover:text-white'}`}
             >
-                <Plus size={16} strokeWidth={3} />
-                教材を追加
+                <Plus size={parentId ? 16 : 14} strokeWidth={3} />
+                {parentId ? 'この講座に教材を追加' : '教材を追加'}
             </button>
-            {open && (
-                <AddTextbookModal
-                    initialFields={fields}
-                    onClose={() => setOpen(false)}
-                />
-            )}
+
+            <AddTextbookModal
+                isOpen={isOpen}
+                onClose={() => setIsOpen(false)}
+                fields={fields}
+                parentId={parentId}
+            />
         </>
     )
 }

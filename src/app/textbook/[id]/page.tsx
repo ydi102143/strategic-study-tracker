@@ -1,13 +1,14 @@
-import { getMaterialById } from '@/app/actions'
+import { getMaterialById, getFields, getCourseMaterials } from '@/app/actions'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, BookOpen, Clock, Play, FileText, Video } from 'lucide-react'
+import { ArrowLeft, BookOpen, Clock, Play, FileText, Video, Link2 as LinkIcon, LayoutGrid } from 'lucide-react'
 import { UploadPdfButton } from '@/components/UploadPdfButton'
 import UploadVideoButton from '@/components/UploadVideoButton'
 import DeleteMaterialButton from '@/components/DeleteMaterialButton'
 import UploadCoverButton from '@/components/UploadCoverButton'
 import { ManualProgressTracker } from '@/components/ManualProgressTracker'
-import { Link2 as LinkIcon } from 'lucide-react'
+import { TextbookCard } from '@/components/TextbookGrid'
+import { AddTextbookButton } from '@/components/AddTextbookButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,7 @@ interface Props {
 export default async function MaterialDetail({ params }: Props) {
     const { id } = params
     const material = await getMaterialById(id)
+    const fields = await getFields()
 
     if (!material) notFound()
 
@@ -26,6 +28,10 @@ export default async function MaterialDetail({ params }: Props) {
     const hasVideo = !!material.video_path
     const isMovie = material.type === 'MOVIE'
     const isWebsite = material.type === 'WEBSITE'
+    const isCourse = material.type === 'COURSE'
+
+    // Fetch child materials if it's a course
+    const childMaterials = isCourse ? await getCourseMaterials(id) : []
 
     return (
         <div className="max-w-4xl mx-auto pb-20 px-4">
@@ -76,8 +82,8 @@ export default async function MaterialDetail({ params }: Props) {
 
                     <div className="flex flex-wrap gap-4 text-sm font-bold uppercase tracking-widest text-gray-400">
                         <span className="bg-surface-2 px-4 py-2 rounded-lg flex items-center gap-2">
-                            {isMovie ? <Video size={16} strokeWidth={2.5} /> : (isWebsite ? <LinkIcon size={16} strokeWidth={2.5} /> : <BookOpen size={16} strokeWidth={2.5} />)}
-                            {isMovie ? '動画教材' : (isWebsite ? '参考サイト' : '教科書')}
+                            {isMovie ? <Video size={16} strokeWidth={2.5} /> : (isWebsite ? <LinkIcon size={16} strokeWidth={2.5} /> : (isCourse ? <LayoutGrid size={16} strokeWidth={2.5} /> : <BookOpen size={16} strokeWidth={2.5} />))}
+                            {isMovie ? '動画教材' : (isWebsite ? '参考サイト' : (isCourse ? '講座・コース' : '教科書'))}
                         </span>
                         <span className="bg-surface-2 px-4 py-2 rounded-lg flex items-center gap-2 text-white">
                             <Clock size={16} strokeWidth={2.5} />
@@ -85,7 +91,7 @@ export default async function MaterialDetail({ params }: Props) {
                         </span>
                     </div>
 
-                    {/* 教科書の場合はページ進捗を表示 */}
+                    {/* 教科書の場合はページ進捗を表示、講座の場合は何もしない（後で進捗集計しても良い） */}
                     {material.type === 'TEXTBOOK' ? (
                         <div className="pt-6">
                             <div className="flex justify-between items-end mb-3">
@@ -108,6 +114,33 @@ export default async function MaterialDetail({ params }: Props) {
                             totalPages={material.total_pages || 1}
                             type={material.type as 'MOVIE' | 'WEBSITE'}
                         />
+                    )}
+
+                    {/* 講座内のコンテンツ一覧 */}
+                    {isCourse && (
+                        <div className="pt-12 space-y-8">
+                            <div className="flex items-center justify-between border-b border-surface-3 pb-4">
+                                <h3 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
+                                    <LayoutGrid size={24} className="text-orange-400" />
+                                    構成カリキュラム
+                                </h3>
+                                <AddTextbookButton fields={fields} parentId={id} />
+                            </div>
+
+                            {childMaterials.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {childMaterials.map(item => (
+                                        <TextbookCard key={item.id} material={item} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="bg-surface-2 border border-dashed border-surface-3 p-12 rounded-3xl text-center">
+                                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">
+                                        まだ教材が追加されていません
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     {/* アクションボタン */}

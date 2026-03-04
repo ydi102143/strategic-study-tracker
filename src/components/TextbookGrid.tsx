@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FileCheck, FileWarning, AlertCircle, Video, Link2 as LinkIcon } from 'lucide-react'
+import { FileCheck, FileWarning, AlertCircle, Video, Link2 as LinkIcon, LayoutGrid } from 'lucide-react'
 import { Material } from '@/types'
 
 export function TextbookCard({ material }: { material: Material }) {
@@ -33,6 +33,8 @@ export function TextbookCard({ material }: { material: Material }) {
                         )
                     ) : material.type === 'MOVIE' ? (
                         <><Video size={14} className="text-blue-400" /><span className="text-[10px] uppercase font-bold text-blue-400 tracking-wider">Video</span></>
+                    ) : material.type === 'COURSE' ? (
+                        <><LayoutGrid size={14} className="text-orange-400" /><span className="text-[10px] uppercase font-bold text-orange-400 tracking-wider">Course</span></>
                     ) : (
                         <><LinkIcon size={14} className="text-purple-400" /><span className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Link</span></>
                     )}
