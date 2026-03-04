@@ -67,7 +67,16 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         }
     }, [pageNumber, materialId, numPages, initialPage])
 
-    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => setNumPages(numPages)
+    const onDocumentLoadSuccess = ({ numPages: loadedNumPages }: { numPages: number }) => {
+        setNumPages(loadedNumPages)
+        // 総ページ数がDBとズレている場合は自動更新
+        if (loadedNumPages !== totalPageCount && loadedNumPages > 0) {
+            startTransition(async () => {
+                await updateProgress(materialId, pageNumber, loadedNumPages)
+            })
+        }
+    }
+
     const goToPrevPage = () => setPageNumber(p => Math.max(1, p - 1))
     const goToNextPage = () => setPageNumber(p => Math.min(numPages, p + 1))
 
@@ -137,7 +146,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             </div>
 
             {/* Main Content */}
-            <div className={`flex-1 overflow-auto flex justify-center items-start pt-4 pb-32 scrollbar-hide select-none relative ${isPencilMode ? 'touch-none' : 'touch-pan-y'}`}>
+            <div className={`flex-1 overflow-auto flex justify-center items-start pt-2 pb-24 scrollbar-hide select-none relative ${isPencilMode ? 'touch-none' : 'touch-pan-y'}`}>
                 <div className="relative shadow-2xl bg-white">
                     <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess}>
                         <Page
