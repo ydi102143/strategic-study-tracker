@@ -19,14 +19,14 @@ export function AddTextbookModal({ initialFields, onClose }: Props) {
     const [fieldId, setFieldId] = useState(initialFields[0]?.id ?? '')
     const [newFieldName, setNewFieldName] = useState('')
     const [isCreatingField, setIsCreatingField] = useState(false)
-    const [type, setType] = useState<'TEXTBOOK' | 'MOVIE'>('TEXTBOOK')
+    const [type, setType] = useState<'TEXTBOOK' | 'MOVIE' | 'WEBSITE'>('TEXTBOOK')
     const [coverImageUrl, setCoverImageUrl] = useState('')
     const [videoUrl, setVideoUrl] = useState('')
     const [coverFile, setCoverFile] = useState<File | null>(null)
     const [coverPreview, setCoverPreview] = useState<string | null>(null)
     const [pdfFile, setPdfFile] = useState<File | null>(null)
 
-    // Default to a 100-page book or 10-lecture course
+    // Default values
     const [totalPages, setTotalPages] = useState<number>(type === 'TEXTBOOK' ? 100 : 10)
 
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -72,7 +72,7 @@ export function AddTextbookModal({ initialFields, onClose }: Props) {
                 type,
                 cover_url: coverImageUrl,
                 total_pages: totalPages,
-                video_path: type === 'MOVIE' ? videoUrl : undefined
+                video_path: type === 'MOVIE' || type === 'WEBSITE' ? videoUrl : undefined
             })
 
             // 2. カバー画像が選択されていればアップロード
@@ -215,13 +215,17 @@ export function AddTextbookModal({ initialFields, onClose }: Props) {
                                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border font-bold text-sm transition ${type === 'MOVIE' ? 'bg-white text-black border-white' : 'bg-surface-2 text-gray-400 border-surface-3 hover:border-white/30'}`}>
                                 <Video size={16} />動画教材
                             </button>
+                            <button type="button" onClick={() => setType('WEBSITE')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border font-bold text-sm transition ${type === 'WEBSITE' ? 'bg-white text-black border-white' : 'bg-surface-2 text-gray-400 border-surface-3 hover:border-white/30'}`}>
+                                <ImageIcon size={16} />参考サイト
+                            </button>
                         </div>
                     </div>
 
                     {/* Total Pages */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                            {type === 'TEXTBOOK' ? '総ページ数' : '全講義数'}
+                            {type === 'TEXTBOOK' ? '総ページ数' : (type === 'MOVIE' ? '全講義数' : '全チャプター/項目数')}
                         </label>
                         <input
                             type="number"
@@ -248,18 +252,18 @@ export function AddTextbookModal({ initialFields, onClose }: Props) {
                         </div>
                     )}
 
-                    {/* video_path for MOVIE */}
-                    {type === 'MOVIE' && (
+                    {/* external URL for MOVIE and WEBSITE */}
+                    {(type === 'MOVIE' || type === 'WEBSITE') && (
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                動画の外部URL <span className="text-white normal-case font-bold">(YouTubeやVimeoなど)</span>
+                                {type === 'MOVIE' ? '動画の外部URL' : 'サイトのURL'} <span className="text-white normal-case font-bold">({type === 'MOVIE' ? 'YouTubeやVimeoなど' : '公式ドキュメントや参考サイト'})</span>
                             </label>
                             <input
                                 type="url"
                                 value={videoUrl}
                                 onChange={e => setVideoUrl(e.target.value)}
                                 className="w-full bg-surface-2 border border-surface-3 rounded-xl px-4 py-3 text-white outline-none focus:border-white/50 transition"
-                                placeholder="https://www.youtube.com/watch?v=..."
+                                placeholder="https://..."
                                 required
                             />
                         </div>

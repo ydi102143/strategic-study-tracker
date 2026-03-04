@@ -8,9 +8,10 @@ interface Props {
     materialId: string
     currentPage: number
     totalPages: number
+    type: 'MOVIE' | 'WEBSITE'
 }
 
-export function MovieProgressTracker({ materialId, currentPage, totalPages }: Props) {
+export function ManualProgressTracker({ materialId, currentPage, totalPages, type }: Props) {
     const [isLoading, setIsLoading] = useState(false)
     const [current, setCurrent] = useState(currentPage)
 
@@ -31,11 +32,16 @@ export function MovieProgressTracker({ materialId, currentPage, totalPages }: Pr
 
     const progressPercent = totalPages > 0 ? (current / totalPages) * 100 : 0
 
+    const labelPrefix = type === 'MOVIE' ? '講義：第' : 'チャプター：第'
+    const labelSuffix = type === 'MOVIE' ? '回 / 全' : '項目 / 全'
+    const buttonLabel = type === 'MOVIE' ? '次の講義を完了にする' : '次の項目を完了にする'
+    const completeLabel = type === 'MOVIE' ? '全講義完了' : '全チャプター完了'
+
     return (
         <div className="pt-6">
             <div className="flex justify-between items-end mb-3">
                 <span className="text-xs font-bold tracking-widest uppercase text-gray-400">
-                    講義：第 {current} 回 / 全 {totalPages} 回
+                    {labelPrefix} {current} {labelSuffix} {totalPages} {type === 'MOVIE' ? '回' : '項目'}
                 </span>
                 <span className="text-xl font-black font-mono tracking-wider">{Math.round(progressPercent)}%</span>
             </div>
@@ -54,9 +60,9 @@ export function MovieProgressTracker({ materialId, currentPage, totalPages }: Pr
                 {isLoading ? (
                     <Loader2 size={16} className="animate-spin" />
                 ) : current >= totalPages ? (
-                    <><Check size={16} /> 全講義完了</>
+                    <><Check size={16} /> {completeLabel}</>
                 ) : (
-                    <><Plus size={16} className="group-hover:rotate-90 transition-transform" /> 次の講義を完了にする</>
+                    <><Plus size={16} className="group-hover:rotate-90 transition-transform" /> {buttonLabel}</>
                 )}
             </button>
         </div>

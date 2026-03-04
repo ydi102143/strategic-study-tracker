@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FileCheck, FileWarning, AlertCircle } from 'lucide-react'
+import { FileCheck, FileWarning, AlertCircle, Video, Link2 as LinkIcon } from 'lucide-react'
 import { Material } from '@/types'
 
 export function TextbookCard({ material }: { material: Material }) {
@@ -23,16 +23,20 @@ export function TextbookCard({ material }: { material: Material }) {
                     className="object-cover w-full h-full opacity-90 group-hover:opacity-100 transition-opacity duration-500"
                 />
 
-                {/* Cloud PDF Status Badge - Show only for Textbooks */}
-                {material.type === 'TEXTBOOK' && (
-                    <div className="absolute top-4 right-4 bg-surface-0/80 backdrop-blur px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 border border-white/10 shadow-sm">
-                        {hasPdf ? (
+                {/* Type & Status Badge */}
+                <div className="absolute top-4 right-4 bg-surface-0/80 backdrop-blur px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 border border-white/10 shadow-sm">
+                    {material.type === 'TEXTBOOK' ? (
+                        hasPdf ? (
                             <><FileCheck size={14} className="text-green-500" /><span className="text-[10px] uppercase font-bold text-green-500 tracking-wider">Cloud</span></>
                         ) : (
                             <><FileWarning size={14} className="text-yellow-500" /><span className="text-[10px] uppercase font-bold text-yellow-500 tracking-wider">No PDF</span></>
-                        )}
-                    </div>
-                )}
+                        )
+                    ) : material.type === 'MOVIE' ? (
+                        <><Video size={14} className="text-blue-400" /><span className="text-[10px] uppercase font-bold text-blue-400 tracking-wider">Video</span></>
+                    ) : (
+                        <><LinkIcon size={14} className="text-purple-400" /><span className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Link</span></>
+                    )}
+                </div>
             </div>
 
             <div className="p-6 flex flex-col gap-4">

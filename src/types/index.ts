@@ -12,7 +12,7 @@ export interface Material {
     user_id: string
     field_id: string
     title: string
-    type: 'TEXTBOOK' | 'MOVIE'
+    type: 'TEXTBOOK' | 'MOVIE' | 'WEBSITE'
     cover_url: string | null
     pdf_path: string | null
     total_pages: number

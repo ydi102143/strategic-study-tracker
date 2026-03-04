@@ -157,7 +157,7 @@ export async function deleteField(id: string) {
 export async function createMaterial(inputData: {
     title: string
     field_id: string
-    type: 'TEXTBOOK' | 'MOVIE'
+    type: 'TEXTBOOK' | 'MOVIE' | 'WEBSITE'
     cover_url?: string
     total_pages?: number
     pdf_path?: string

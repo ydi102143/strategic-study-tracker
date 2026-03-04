@@ -6,7 +6,8 @@ import { UploadPdfButton } from '@/components/UploadPdfButton'
 import UploadVideoButton from '@/components/UploadVideoButton'
 import DeleteMaterialButton from '@/components/DeleteMaterialButton'
 import UploadCoverButton from '@/components/UploadCoverButton'
-import { MovieProgressTracker } from '@/components/MovieProgressTracker'
+import { ManualProgressTracker } from '@/components/ManualProgressTracker'
+import { Link2 as LinkIcon } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export default async function MaterialDetail({ params }: Props) {
     const hasPdf = !!material.pdf_path
     const hasVideo = !!material.video_path
     const isMovie = material.type === 'MOVIE'
+    const isWebsite = material.type === 'WEBSITE'
 
     return (
         <div className="max-w-4xl mx-auto pb-20 px-4">
@@ -50,6 +52,11 @@ export default async function MaterialDetail({ params }: Props) {
                             <Video className="text-white opacity-50" size={48} />
                         </div>
                     )}
+                    {isWebsite && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
+                            <LinkIcon className="text-white opacity-50" size={48} />
+                        </div>
+                    )}
 
                     {/* カバー画像アップロードボタン */}
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -69,8 +76,8 @@ export default async function MaterialDetail({ params }: Props) {
 
                     <div className="flex flex-wrap gap-4 text-sm font-bold uppercase tracking-widest text-gray-400">
                         <span className="bg-surface-2 px-4 py-2 rounded-lg flex items-center gap-2">
-                            {isMovie ? <Video size={16} strokeWidth={2.5} /> : <BookOpen size={16} strokeWidth={2.5} />}
-                            {isMovie ? '動画教材' : '教科書'}
+                            {isMovie ? <Video size={16} strokeWidth={2.5} /> : (isWebsite ? <LinkIcon size={16} strokeWidth={2.5} /> : <BookOpen size={16} strokeWidth={2.5} />)}
+                            {isMovie ? '動画教材' : (isWebsite ? '参考サイト' : '教科書')}
                         </span>
                         <span className="bg-surface-2 px-4 py-2 rounded-lg flex items-center gap-2 text-white">
                             <Clock size={16} strokeWidth={2.5} />
@@ -79,7 +86,7 @@ export default async function MaterialDetail({ params }: Props) {
                     </div>
 
                     {/* 教科書の場合はページ進捗を表示 */}
-                    {!isMovie ? (
+                    {material.type === 'TEXTBOOK' ? (
                         <div className="pt-6">
                             <div className="flex justify-between items-end mb-3">
                                 <span className="text-xs font-bold tracking-widest uppercase text-gray-500">
@@ -95,19 +102,20 @@ export default async function MaterialDetail({ params }: Props) {
                             </div>
                         </div>
                     ) : (
-                        <MovieProgressTracker
+                        <ManualProgressTracker
                             materialId={material.id}
                             currentPage={material.current_page || 0}
                             totalPages={material.total_pages || 1}
+                            type={material.type as 'MOVIE' | 'WEBSITE'}
                         />
                     )}
 
                     {/* アクションボタン */}
                     <div className="pt-8 border-t border-surface-3 space-y-6">
-                        {isMovie ? (
+                        {material.type !== 'TEXTBOOK' ? (
                             <div className="bg-surface-2 p-6 rounded-2xl border border-surface-3">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <Video size={14} /> 講義動画ソース
+                                    {isMovie ? <Video size={14} /> : <LinkIcon size={14} />} {isMovie ? '動画教材ソース' : 'サイトのURL'}
                                 </p>
                                 <div className="text-sm font-mono text-blue-400 truncate bg-black/30 p-3 rounded-lg border border-surface-3 mb-4">
                                     {material.video_path || 'URLが設定されていません'}
@@ -120,8 +128,8 @@ export default async function MaterialDetail({ params }: Props) {
                                         rel="noopener noreferrer"
                                         className="bg-white text-black font-black uppercase tracking-widest text-xs px-6 py-4 rounded-xl flex items-center justify-center gap-2 transition-all w-full shadow-lg hover:-translate-y-0.5"
                                     >
-                                        <Play size={16} strokeWidth={2.5} />
-                                        外部プレイヤーで再生
+                                        {isMovie ? <Play size={16} strokeWidth={2.5} /> : <LinkIcon size={16} strokeWidth={2.5} />}
+                                        {isMovie ? '外部プレイヤーで再生' : 'サイトを開く'}
                                     </a>
                                 )}
                             </div>
@@ -156,7 +164,7 @@ export default async function MaterialDetail({ params }: Props) {
                     <p className="text-gray-400 text-sm leading-relaxed">
                         {isMovie
                             ? '動画ファイルをアップロードして、どこからでもストリーミング再生できます。学習した時間は自動的に記録されます。'
-                            : 'PDFをアップロードすると、Apple Pencilでの手書き注釈などがクラウドに保存され、iPad等の他デバイスと自動同期されるようになります。'}
+                            : (isWebsite ? '参考サイトや公式ドキュメントへのリンクを管理できます。学習した項目（チャプター）ごとに進捗を記録できます。' : 'PDFをアップロードすると、Apple Pencilでの手書き注釈などがクラウドに保存され、iPad等の他デバイスと自動同期されるようになります。')}
                     </p>
                 </div>
             </div>

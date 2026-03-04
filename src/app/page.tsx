@@ -4,7 +4,7 @@ import { TextbookCard } from '@/components/TextbookGrid'
 import { AddTextbookButton } from '@/components/AddTextbookButton'
 import { FieldSettings } from '@/components/FieldSettings'
 import { OnboardingModal } from '@/components/OnboardingModal'
-import { BookOpen, Video } from 'lucide-react'
+import { BookOpen, Video, Image as ImageIcon } from 'lucide-react'
 
 interface PageProps {
     searchParams: { [key: string]: string | string[] | undefined }
@@ -70,6 +70,7 @@ export default async function Home({ searchParams }: PageProps) {
                         const fieldMaterials = allMaterials.filter(t => t && t.field_id === field.id)
                         const textbooks = fieldMaterials.filter(t => t.type === 'TEXTBOOK')
                         const movies = fieldMaterials.filter(t => t.type === 'MOVIE')
+                        const websites = fieldMaterials.filter(t => t.type === 'WEBSITE')
 
                         if (fieldMaterials.length === 0) return null
 
@@ -102,6 +103,18 @@ export default async function Home({ searchParams }: PageProps) {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                             {movies.map(tb => <TextbookCard key={tb.id} material={tb} />)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {websites.length > 0 && (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-center gap-3 text-gray-400 mt-12">
+                                            <ImageIcon size={20} />
+                                            <span className="text-sm font-bold uppercase tracking-widest">参考サイト / ドキュメント</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            {websites.map(tb => <TextbookCard key={tb.id} material={tb} />)}
                                         </div>
                                     </div>
                                 )}
