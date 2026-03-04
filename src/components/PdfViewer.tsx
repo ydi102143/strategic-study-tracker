@@ -34,12 +34,10 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     const router = useRouter()
     const [containerWidth, setContainerWidth] = useState<number>(800)
 
-    // Window Resize Handler
+    // Window Resize Handler - Maximize for iPad
     useEffect(() => {
         function handleResize() {
-            // iPad Pro etc usually have > 800px width.
-            // We subtract some padding for the UI.
-            setContainerWidth(window.innerWidth - 32)
+            setContainerWidth(window.innerWidth)
         }
         handleResize()
         window.addEventListener('resize', handleResize)
@@ -69,8 +67,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
     const onDocumentLoadSuccess = ({ numPages: loadedNumPages }: { numPages: number }) => {
         setNumPages(loadedNumPages)
-        // 総ページ数がDBとズレている場合は自動更新
-        if (loadedNumPages !== totalPageCount && loadedNumPages > 0) {
+        // ページ数がDB（初期値1など）とズレている場合は自動更新
+        if (loadedNumPages > 0 && (totalPageCount <= 1 || loadedNumPages !== totalPageCount)) {
             startTransition(async () => {
                 await updateProgress(materialId, pageNumber, loadedNumPages)
             })
@@ -92,7 +90,9 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                         <ArrowLeft size={24} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
                     </button>
                     <div className="h-4 w-[1px] bg-white/10 mx-1" />
-                    <span className="text-sm font-black tracking-widest text-white/50">{pageNumber} / {numPages}</span>
+                    <span className="text-sm font-black tracking-widest text-white/70 tabular-nums">
+                        {pageNumber} <span className="text-white/20 mx-1">/</span> {numPages}
+                    </span>
                 </div>
 
                 {/* Handwriting Toolbar */}
@@ -145,12 +145,16 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className={`flex-1 overflow-auto flex justify-center items-start pt-2 pb-24 scrollbar-hide select-none relative ${isPencilMode ? 'touch-none' : 'touch-pan-y'}`}>
-                <div className="relative shadow-2xl bg-white">
-                    <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess}>
+            {/* Main Content - Minimal padding for maximum PDF size */}
+            <div className={`flex-1 overflow-auto flex justify-center items-start pt-0 pb-20 scrollbar-hide select-none relative bg-black ${isPencilMode ? 'touch-none' : 'touch-pan-y'}`}>
+                <div className="relative shadow-2xl bg-white origin-top">
+                    <Document
+                        file={pdfUrl}
+                        onLoadSuccess={onDocumentLoadSuccess}
+                        loading={<div className="p-20 text-white font-bold opacity-30 text-xs uppercase tracking-widest animate-pulse">Loading PDF...</div>}
+                    >
                         <Page
-                            pageNumber={pageNumber}
+                            pageNumber={Math.min(pageNumber, numPages)}
                             scale={scale}
                             width={containerWidth}
                             renderAnnotationLayer={false}
