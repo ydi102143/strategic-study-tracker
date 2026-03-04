@@ -272,6 +272,17 @@ export async function uploadMaterialPdf(materialId: string, formData: FormData) 
     revalidatePath(`/textbook/${materialId}`)
 }
 
+export async function setMaterialPdfPath(materialId: string, pdfPath: string) {
+    const supabase = await createClient()
+    const { error } = await supabase
+        .from('materials')
+        .update({ pdf_path: pdfPath })
+        .eq('id', materialId)
+
+    if (error) throw new Error('Failed to update material record')
+    revalidatePath(`/textbook/${materialId}`)
+}
+
 export async function uploadMaterialVideo(materialId: string, formData: FormData) {
     const supabase = await createClient()
     const file = formData.get('file') as File
@@ -322,6 +333,18 @@ export async function uploadMaterialCover(materialId: string, formData: FormData
         .update({ cover_url: publicUrl })
         .eq('id', materialId)
     if (updateError) throw new Error('Failed to update material cover')
+    revalidatePath(`/textbook/${materialId}`)
+    revalidatePath('/')
+}
+
+export async function setMaterialCoverUrl(materialId: string, coverUrl: string) {
+    const supabase = await createClient()
+    const { error } = await supabase
+        .from('materials')
+        .update({ cover_url: coverUrl })
+        .eq('id', materialId)
+
+    if (error) throw new Error('Failed to update material cover')
     revalidatePath(`/textbook/${materialId}`)
     revalidatePath('/')
 }

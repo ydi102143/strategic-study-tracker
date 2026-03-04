@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { X, Plus, BookOpen, Video, AlertCircle, Camera, Image as ImageIcon, Loader2, LayoutGrid } from 'lucide-react'
-import { createMaterial, createField, uploadMaterialCover, uploadMaterialPdf } from '@/app/actions'
+import { createMaterial, createField, setMaterialCoverUrl, setMaterialPdfPath } from '@/app/actions'
+import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 interface SimpleField { id: string; name: string }
@@ -81,6 +82,10 @@ export default function AddTextbookModal({ isOpen, onClose, fields: initialField
         setIsSubmitting(true)
         setError(null)
         try {
+            const supabase = createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error("Unauthorized")
+
             // 1. 教材を作成
             const newMaterial = await createMaterial({
                 title: title.trim(),
@@ -91,18 +96,29 @@ export default function AddTextbookModal({ isOpen, onClose, fields: initialField
                 parent_id: parentId
             })
 
-            // 2. カバー画像が選択されていればアップロード
-            if (coverFile && newMaterial?.id) {
-                const formData = new FormData()
-                formData.append('file', coverFile)
-                await uploadMaterialCover(newMaterial.id, formData)
+            if (!newMaterial?.id) throw new Error("Failed to create material record")
+
+            // 2. カバー画像が選択されていればアップロード (クライアントサイド)
+            if (coverFile) {
+                const coverPath = `${user.id}/${newMaterial.id}_cover.jpg`
+                const { data: coverUpData, error: coverUpError } = await supabase.storage
+                    .from('materials')
+                    .upload(coverPath, coverFile, { upsert: true, contentType: coverFile.type })
+
+                if (coverUpError) throw new Error(`Cover Upload Failed: ${coverUpError.message}`)
+                const { data: { publicUrl } } = supabase.storage.from('materials').getPublicUrl(coverUpData.path)
+                await setMaterialCoverUrl(newMaterial.id, publicUrl)
             }
 
-            // 3. PDFファイルが選択されていればアップロード (教科書のみ)
-            if (type === 'TEXTBOOK' && pdfFile && newMaterial?.id) {
-                const formData = new FormData()
-                formData.append('file', pdfFile)
-                await uploadMaterialPdf(newMaterial.id, formData)
+            // 3. PDFファイルが選択されていればアップロード (クライアントサイド)
+            if (type === 'TEXTBOOK' && pdfFile) {
+                const pdfPath = `${user.id}/${newMaterial.id}.pdf`
+                const { data: pdfUpData, error: pdfUpError } = await supabase.storage
+                    .from('materials')
+                    .upload(pdfPath, pdfFile, { upsert: true, contentType: 'application/pdf' })
+
+                if (pdfUpError) throw new Error(`PDF Upload Failed: ${pdfUpError.message}`)
+                await setMaterialPdfPath(newMaterial.id, pdfUpData.path)
             }
 
             router.refresh()

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { uploadMaterialPdf } from '@/app/actions'
-import { Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { setMaterialPdfPath } from '@/app/actions'
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 
 interface Props {
     materialId: string
@@ -12,6 +13,7 @@ interface Props {
 export function UploadPdfButton({ materialId, hasPdf }: Props) {
     const [isUploading, setIsUploading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const supabase = createClient()
 
     async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
@@ -26,9 +28,21 @@ export function UploadPdfButton({ materialId, hasPdf }: Props) {
         setError(null)
 
         try {
-            const formData = new FormData()
-            formData.set('file', file)
-            await uploadMaterialPdf(materialId, formData)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error("Unauthorized")
+
+            const filePath = `${user.id}/${materialId}.pdf`
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('materials')
+                .upload(filePath, file, {
+                    upsert: true,
+                    contentType: 'application/pdf'
+                })
+
+            if (uploadError) throw new Error(`Upload Failed: ${uploadError.message}`)
+
+            await setMaterialPdfPath(materialId, uploadData.path)
         } catch (err: any) {
             setError(err.message)
         } finally {

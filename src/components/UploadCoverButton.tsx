@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { uploadMaterialCover } from '@/app/actions'
+import { setMaterialCoverUrl } from '@/app/actions'
+import { createClient } from '@/lib/supabase/client'
 import { Camera, Loader2, Check } from 'lucide-react'
 
 export default function UploadCoverButton({ materialId }: { materialId: string }) {
     const [uploading, setUploading] = useState(false)
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+    const supabase = createClient()
 
     async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
@@ -18,11 +20,21 @@ export default function UploadCoverButton({ materialId }: { materialId: string }
         }
 
         setUploading(true)
-        const formData = new FormData()
-        formData.append('file', file)
-
         try {
-            await uploadMaterialCover(materialId, formData)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error("Unauthorized")
+
+            const filePath = `${user.id}/${materialId}_cover.jpg`
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('materials')
+                .upload(filePath, file, { upsert: true, contentType: file.type })
+
+            if (uploadError) throw new Error(`Cover Upload Failed: ${uploadError.message}`)
+
+            const { data: { publicUrl } } = supabase.storage.from('materials').getPublicUrl(uploadData.path)
+            await setMaterialCoverUrl(materialId, publicUrl)
+
             setStatus('success')
             setTimeout(() => setStatus('idle'), 3000)
         } catch (err) {
