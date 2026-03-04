@@ -33,12 +33,15 @@ export default function UploadCoverButton({ materialId }: { materialId: string }
             if (uploadError) throw new Error(`Cover Upload Failed: ${uploadError.message}`)
 
             const { data: { publicUrl } } = supabase.storage.from('materials').getPublicUrl(uploadData.path)
-            await setMaterialCoverUrl(materialId, publicUrl)
+            // キャッシュ対策としてタイムスタンプを付与
+            const burstUrl = `${publicUrl}${publicUrl.includes('?') ? '&' : '?'}v=${Date.now()}`
+            await setMaterialCoverUrl(materialId, burstUrl)
 
             setStatus('success')
             setTimeout(() => setStatus('idle'), 3000)
-        } catch (err) {
+        } catch (err: any) {
             console.error('Cover upload failed:', err)
+            alert('アップロードに失敗しました: ' + (err.message || '不明なエラー'))
             setStatus('error')
         } finally {
             setUploading(false)

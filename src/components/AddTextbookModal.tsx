@@ -107,7 +107,8 @@ export default function AddTextbookModal({ isOpen, onClose, fields: initialField
 
                 if (coverUpError) throw new Error(`Cover Upload Failed: ${coverUpError.message}`)
                 const { data: { publicUrl } } = supabase.storage.from('materials').getPublicUrl(coverUpData.path)
-                await setMaterialCoverUrl(newMaterial.id, publicUrl)
+                const burstUrl = `${publicUrl}${publicUrl.includes('?') ? '&' : '?'}v=${Date.now()}`
+                await setMaterialCoverUrl(newMaterial.id, burstUrl)
             }
 
             // 3. PDFファイルが選択されていればアップロード (クライアントサイド)
