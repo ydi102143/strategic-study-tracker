@@ -150,7 +150,8 @@ export default async function MaterialDetail({ params: paramsPromise }: Props) {
                         {material.type !== 'TEXTBOOK' ? (
                             <div className="bg-surface-2 p-6 rounded-2xl border border-surface-3">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    {isMovie ? <Video size={14} /> : <LinkIcon size={14} />} {isMovie ? '動画教材ソース' : 'サイトのURL'}
+                                    {isMovie ? <Video size={14} /> : (isCourse ? <LayoutGrid size={14} /> : <LinkIcon size={14} />)}
+                                    {isMovie ? '動画教材ソース' : (isCourse ? '講座ポータル / 参考URL' : 'サイトのURL')}
                                 </p>
                                 <div className="text-sm font-mono text-blue-400 truncate bg-black/30 p-3 rounded-lg border border-surface-3 mb-4">
                                     {material.video_path || 'URLが設定されていません'}
@@ -163,8 +164,8 @@ export default async function MaterialDetail({ params: paramsPromise }: Props) {
                                         rel="noopener noreferrer"
                                         className="bg-white text-black font-black uppercase tracking-widest text-xs px-6 py-4 rounded-xl flex items-center justify-center gap-2 transition-all w-full shadow-lg hover:-translate-y-0.5"
                                     >
-                                        {isMovie ? <Play size={16} strokeWidth={2.5} /> : <LinkIcon size={16} strokeWidth={2.5} />}
-                                        {isMovie ? '外部プレイヤーで再生' : 'サイトを開く'}
+                                        {isMovie ? <Play size={16} strokeWidth={2.5} /> : (isCourse ? <LinkIcon size={16} strokeWidth={2.5} /> : <LinkIcon size={16} strokeWidth={2.5} />)}
+                                        {isMovie ? '外部プレイヤーで再生' : (isCourse ? '講座用リンクを開く' : 'サイトを開く')}
                                     </a>
                                 )}
                             </div>

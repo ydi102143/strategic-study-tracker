@@ -248,11 +248,11 @@ export default function AddTextbookModal({ isOpen, onClose, fields: initialField
                         />
                     </div>
 
-                    {/* URL for MOVIE/WEBSITE */}
-                    {(type === 'MOVIE' || type === 'WEBSITE') && (
+                    {/* URL for MOVIE/WEBSITE/COURSE */}
+                    {(type === 'MOVIE' || type === 'WEBSITE' || type === 'COURSE') && (
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                                {type === 'MOVIE' ? '動画のURL (YouTube等)' : 'サイトのURL'}
+                                {type === 'MOVIE' ? '動画のURL (YouTube等)' : (type === 'COURSE' ? '講座のURL / ポータル等' : 'サイトのURL')}
                             </label>
                             <input
                                 type="text"
