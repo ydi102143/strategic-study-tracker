@@ -28,19 +28,21 @@ interface Props {
 
 export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = [], isActive, mode, color, lineWidth }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
     const isDrawingRef = useRef(false)
     const lastPointRef = useRef<Point | null>(null)
     const currentPointsRef = useRef<Point[]>([])
-
-    // 全画データの記録用
     const strokesRef = useRef<Stroke[]>([])
+
+    // イベントキュー（120Hz/60Hz同期用）
+    const pendingPointsRef = useRef<Point[]>([])
 
     const getPixelRatio = () => (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)
 
-    // キャンバス全体をクリーンに再描画する関数（ページ移動やリサイズ時のみ使用）
+    // 全体の再描画
     const redrawEverything = useCallback(() => {
         const canvas = canvasRef.current
-        const ctx = canvas?.getContext('2d')
+        const ctx = ctxRef.current
         if (!ctx || !canvas) return
 
         const ratio = getPixelRatio()
@@ -64,7 +66,23 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         })
     }, [])
 
-    // DBからの初期データ読み込み
+    // コンテキスト初期化（低遅延設定）
+    useEffect(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+
+        // desynchronized: true を指定してOSの描画ループに直接介入する
+        const ctx = canvas.getContext('2d', {
+            desynchronized: true,
+            alpha: true
+        })
+        if (ctx) {
+            ctxRef.current = ctx as CanvasRenderingContext2D
+            redrawEverything()
+        }
+    }, [redrawEverything])
+
+    // 初期データ読み込み
     useEffect(() => {
         strokesRef.current = initialAnnotations.map(ann => ({
             id: ann.id,
@@ -91,16 +109,63 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 redrawEverything()
             }
         }
-
         const observer = new ResizeObserver(updateSize)
         if (canvas.parentElement) observer.observe(canvas.parentElement)
         updateSize()
         return () => observer.disconnect()
     }, [redrawEverything])
 
+    const eraseAt = (x: number, y: number) => {
+        const threshold = 0.025
+        const strokeToErase = strokesRef.current.find(stroke =>
+            stroke.points.some(p => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold)
+        )
+        if (strokeToErase?.id) {
+            strokesRef.current = strokesRef.current.filter(s => s.id !== strokeToErase.id)
+            redrawEverything()
+            deleteAnnotation(strokeToErase.id).catch(err => console.error(err))
+            return true
+        }
+        return false
+    }
+
+    // 描画ループ (requestAnimationFrame)
+    useEffect(() => {
+        let rafId: number
+        const renderLoop = () => {
+            const canvas = canvasRef.current
+            const ctx = ctxRef.current
+
+            if (canvas && ctx && pendingPointsRef.current.length > 0) {
+                const ratio = getPixelRatio()
+                ctx.strokeStyle = color
+                ctx.lineWidth = lineWidth * ratio
+                ctx.lineJoin = 'round'
+                ctx.lineCap = 'round'
+
+                // キューに溜まった点を一気に描画
+                for (const newPoint of pendingPointsRef.current) {
+                    if (mode === 'eraser') {
+                        eraseAt(newPoint.x, newPoint.y)
+                    } else if (lastPointRef.current) {
+                        ctx.beginPath()
+                        ctx.moveTo(lastPointRef.current.x * canvas.width, lastPointRef.current.y * canvas.height)
+                        ctx.lineTo(newPoint.x * canvas.width, newPoint.y * canvas.height)
+                        ctx.stroke()
+                    }
+                    lastPointRef.current = newPoint
+                    currentPointsRef.current.push(newPoint)
+                }
+                pendingPointsRef.current = []
+            }
+            rafId = requestAnimationFrame(renderLoop)
+        }
+        rafId = requestAnimationFrame(renderLoop)
+        return () => cancelAnimationFrame(rafId)
+    }, [color, lineWidth, mode])
+
     const startAction = (e: React.PointerEvent) => {
         if (!isActive) return
-
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
         if (e.cancelable) e.preventDefault()
@@ -113,20 +178,12 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         const x = (e.clientX - rect.left) / rect.width
         const y = (e.clientY - rect.top) / rect.height
 
+        isDrawingRef.current = true
+        const point = { x, y, p: 0.5 }
+
         if (mode === 'eraser') {
-            // 消しゴム機能（判定にしきい値を使用）
-            const threshold = 0.02
-            const strokeToErase = strokesRef.current.find(stroke =>
-                stroke.points.some(p => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold)
-            )
-            if (strokeToErase?.id) {
-                strokesRef.current = strokesRef.current.filter(s => s.id !== strokeToErase.id)
-                redrawEverything()
-                deleteAnnotation(strokeToErase.id).catch(err => console.error(err))
-            }
+            pendingPointsRef.current.push(point)
         } else {
-            isDrawingRef.current = true
-            const point = { x, y, p: 0.5 }
             lastPointRef.current = point
             currentPointsRef.current = [point]
         }
@@ -134,60 +191,35 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
 
     const doAction = (e: React.PointerEvent) => {
         if (!isActive || !isDrawingRef.current) return
-
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
         if (e.cancelable) e.preventDefault()
 
         const canvas = canvasRef.current
-        const ctx = canvas?.getContext('2d')
-        if (!ctx || !canvas) return
-
+        if (!canvas) return
         const rect = canvas.getBoundingClientRect()
-        const ratio = getPixelRatio()
 
-        // 高速描画対応: CoalescedEvents（合体されたイベント）から全サブポイントを取得
-        // これをしないと、素早く動かした時に点が飛び飛びになる
+        // 高密度の入力を取得
         const events = (e.nativeEvent as any).getCoalescedEvents?.() || [e.nativeEvent]
-
-        ctx.strokeStyle = color
-        ctx.lineWidth = lineWidth * ratio
-        ctx.lineJoin = 'round'
-        ctx.lineCap = 'round'
-
         for (const ev of events) {
             const x = (ev.clientX - rect.left) / rect.width
             const y = (ev.clientY - rect.top) / rect.height
-            const newPoint = { x, y, p: 0.5 }
-
-            const lastPoint = lastPointRef.current
-            if (lastPoint) {
-                ctx.beginPath()
-                ctx.moveTo(lastPoint.x * canvas.width, lastPoint.y * canvas.height)
-                ctx.lineTo(x * canvas.width, y * canvas.height)
-                ctx.stroke()
-            }
-
-            lastPointRef.current = newPoint
-            currentPointsRef.current.push(newPoint)
+            pendingPointsRef.current.push({ x, y, p: 0.5 })
         }
     }
 
     const stopAction = async (e: React.PointerEvent) => {
         const canvas = canvasRef.current
         if (canvas) canvas.releasePointerCapture(e.pointerId)
-
         if (!isDrawingRef.current) return
         isDrawingRef.current = false
 
-        if (currentPointsRef.current.length > 1) {
+        if (currentPointsRef.current.length > 1 && mode !== 'eraser') {
             const newStrokeContent = {
                 points: currentPointsRef.current,
                 color: color,
                 width: lineWidth
             }
-
-            // 保存処理中も画面には描画済みなので、Refに追加するだけでOK（点滅しない）
             const tempId = 'temp-' + Date.now()
             strokesRef.current.push({ ...newStrokeContent, id: tempId })
 
@@ -202,12 +234,11 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                     s.id === tempId ? { ...newStrokeContent, id: saved.id } : s
                 )
             } catch (err) {
-                console.error('Save failed:', err)
+                console.error(err)
                 strokesRef.current = strokesRef.current.filter(s => s.id !== tempId)
                 redrawEverything()
             }
         }
-
         lastPointRef.current = null
         currentPointsRef.current = []
     }
@@ -227,7 +258,8 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 top: 0,
                 left: 0,
                 display: 'block',
-                outline: 'none'
+                outline: 'none',
+                willChange: 'transform' // ハードウェア加速を要求
             }}
             className={`z-[200] ${isActive ? (mode === 'pen' ? 'cursor-crosshair' : 'cursor-cell') : 'pointer-events-none'}`}
         />
