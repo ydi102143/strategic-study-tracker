@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { ChevronLeft, ChevronRight, Edit3, Eraser, ArrowLeft, ZoomIn, ZoomOut, RefreshCw, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit3, Eraser, ArrowLeft, ZoomIn, ZoomOut, RefreshCw, X, Hand } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { updateProgress, getAnnotations } from '@/app/actions'
 import { AnnotationCanvas } from './AnnotationCanvas'
@@ -163,9 +163,9 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         }
     }, [isPencilMode])
 
-    const goToPrevPage = () => !isPencilMode && setPageNumber(p => Math.max(1, p - 1))
-    const goToNextPage = () => !isPencilMode && setPageNumber(p => Math.min(numPages, p + 1))
-    const handleResetScale = () => !isPencilMode && setScale(1.0)
+    const goToPrevPage = () => setPageNumber(p => Math.max(1, p - 1))
+    const goToNextPage = () => setPageNumber(p => Math.min(numPages, p + 1))
+    const handleResetScale = () => setScale(1.0)
 
     return (
         <div
@@ -173,65 +173,58 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             onDoubleClick={(e) => isPencilMode && e.preventDefault()}
             {...({ 'disable-live-text-selection': isPencilMode ? 'true' : 'false' } as any)}
         >
-            {/* 1. Header - Physically REMOVED in Pencil Mode */}
-            {!isPencilMode && (
-                <div className="flex items-center justify-between px-6 py-4 bg-surface-1/50 backdrop-blur-md border-b border-white/5 z-50">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => router.back()}
-                            className="p-2 -ml-2 text-gray-400 hover:text-white transition group"
-                        >
-                            <ArrowLeft size={24} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
-                        </button>
-                        <div className="h-4 w-[1px] bg-white/10 mx-1" />
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="number"
-                                min="1"
-                                max={numPages}
-                                value={pageNumber}
-                                onChange={(e) => {
-                                    const val = parseInt(e.target.value)
-                                    if (!isNaN(val) && val >= 1 && val <= numPages) {
-                                        setPageNumber(val)
-                                    }
-                                }}
-                                className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-black font-mono text-center focus:border-white/30 outline-none transition-all"
-                            />
-                            <span className="text-[10px] font-black tracking-widest text-white/20 uppercase">of</span>
-                            <span className="text-[10px] font-black tracking-widest text-white/40 tabular-nums">
-                                {numPages}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-surface-2 p-1 rounded-2xl border border-white/5 z-[250] relative">
-                        <button
-                            onClick={() => { setIsPencilMode(true); setActiveTool('pen') }}
-                            className="p-2.5 rounded-xl transition-all bg-transparent text-gray-500 hover:text-white"
-                        >
-                            <Edit3 size={18} strokeWidth={2.5} />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={() => {
-                                setHasSyncedTotalPages(false)
-                                router.refresh()
+            {/* 1. Header - Always visible for context */}
+            <div className="flex items-center justify-between px-6 py-4 bg-surface-1/50 backdrop-blur-md border-b border-white/5 z-50">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => router.back()}
+                        className="p-2 -ml-2 text-gray-400 hover:text-white transition group"
+                    >
+                        <ArrowLeft size={24} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
+                    </button>
+                    <div className="h-4 w-[1px] bg-white/10 mx-1" />
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            min="1"
+                            max={numPages}
+                            value={pageNumber}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value)
+                                if (!isNaN(val) && val >= 1 && val <= numPages) {
+                                    setPageNumber(val)
+                                }
                             }}
-                            className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl flex items-center gap-2"
-                            title="ページ数を再確認"
-                        >
-                            <RefreshCw size={18} className={isPending ? "animate-spin" : ""} />
-                        </button>
-                        <div className="h-4 w-[1px] bg-white/10 mx-1" />
-                        <button onClick={() => setScale(s => Math.max(0.3, s - 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomOut size={20} /></button>
-                        <button onClick={handleResetScale} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition px-2">Reset</button>
-                        <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomIn size={20} /></button>
+                            className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-black font-mono text-center focus:border-white/30 outline-none transition-all"
+                        />
+                        <span className="text-[10px] font-black tracking-widest text-white/20 uppercase">of</span>
+                        <span className="text-[10px] font-black tracking-widest text-white/40 tabular-nums">
+                            {numPages}
+                        </span>
                     </div>
                 </div>
-            )}
+
+                <div className="flex items-center gap-1">
+                    {/* Header mode toggle removed (moved to bottom) */}
+                </div>
+
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => {
+                            setHasSyncedTotalPages(false)
+                            router.refresh()
+                        }}
+                        className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl flex items-center gap-2"
+                        title="ページ数を再確認"
+                    >
+                        <RefreshCw size={18} className={isPending ? "animate-spin" : ""} />
+                    </button>
+                    <div className="h-4 w-[1px] bg-white/10 mx-1" />
+                    <button onClick={() => setScale(s => Math.max(0.3, s - 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomOut size={20} /></button>
+                    <button onClick={handleResetScale} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition px-2">Reset</button>
+                    <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomIn size={20} /></button>
+                </div>
+            </div>
 
             {/* 2. Floating Pencil Toolbar - Centered at top, truly isolated from the layout */}
             {isPencilMode && (
@@ -315,49 +308,63 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 </div>
             </div>
 
-            {/* iPad Nav Controls */}
-            {!isPencilMode && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 bg-surface-2/80 backdrop-blur-xl border border-white/10 px-8 py-4 rounded-3xl shadow-2xl z-50 min-w-[320px] md:min-w-[540px]">
-                    <div className="flex items-center gap-1">
-                        <button onClick={() => setPageNumber(1)} disabled={pageNumber <= 1} className="p-2 text-white/40 hover:text-white transition-colors disabled:opacity-0" title="最初に戻る"><ChevronLeft size={20} strokeWidth={3} /><ChevronLeft size={20} strokeWidth={3} className="-ml-3" /></button>
-                        <button onClick={goToPrevPage} disabled={pageNumber <= 1} className="p-3 text-white hover:bg-white/10 rounded-2xl disabled:opacity-20 transition-colors"><ChevronLeft size={28} /></button>
-                    </div>
+            {/* iPad Nav Controls - Always visible */}
+            <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-surface-2/90 backdrop-blur-2xl border border-white/10 px-6 py-3 rounded-[32px] shadow-2xl z-[600] min-w-[320px] md:min-w-[700px] transition-all duration-500`}>
+                {/* 1. Mode Toggle (Side-by-side) */}
+                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-2xl border border-white/5 mr-2">
+                    <button
+                        onClick={() => setIsPencilMode(false)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${!isPencilMode ? 'bg-white text-black shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        <Hand size={16} strokeWidth={3} />
+                        <span className="hidden sm:inline">Scroll</span>
+                    </button>
+                    <button
+                        onClick={() => { setIsPencilMode(true); setActiveTool('pen') }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isPencilMode ? 'bg-white text-black shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        <Edit3 size={16} strokeWidth={3} />
+                        <span className="hidden sm:inline">Pencil</span>
+                    </button>
+                </div>
 
-                    <div className="flex-1 flex flex-col gap-2">
-                        <div className="flex justify-between items-center px-1">
-                            <span className="text-[10px] font-black font-mono text-white/40">{pageNumber}</span>
-                            <span className="text-[10px] font-black font-mono text-white/40">{numPages}</span>
-                        </div>
-                        <div className="relative h-6 flex items-center group/slider">
-                            {/* Visual Track */}
-                            <div className="absolute w-full h-1 bg-white/10 rounded-full" />
-                            <div
-                                className="absolute h-1 bg-white rounded-full transition-all duration-300"
-                                style={{ width: `${(pageNumber / numPages) * 100}%` }}
-                            />
-                            {/* Actual Input */}
-                            <input
-                                type="range"
-                                min="1"
-                                max={numPages}
-                                value={pageNumber}
-                                onChange={(e) => setPageNumber(parseInt(e.target.value))}
-                                className="absolute w-full opacity-0 cursor-pointer z-10"
-                            />
-                            {/* Thumb Visual */}
-                            <div
-                                className="absolute w-4 h-4 bg-white rounded-full shadow-xl transition-all pointer-events-none group-hover/slider:scale-125"
-                                style={{ left: `calc(${(pageNumber / numPages) * 100}% - 8px)` }}
-                            />
-                        </div>
-                    </div>
+                <div className="h-4 w-[1px] bg-white/10 mx-1" />
 
-                    <div className="flex items-center gap-1">
-                        <button onClick={goToNextPage} disabled={pageNumber >= numPages} className="p-3 text-white hover:bg-white/10 rounded-2xl disabled:opacity-20 transition-colors"><ChevronRight size={28} /></button>
-                        <button onClick={() => setPageNumber(numPages)} disabled={pageNumber >= numPages} className="p-2 text-white/40 hover:text-white transition-colors disabled:opacity-0" title="最後へ"><ChevronRight size={20} strokeWidth={3} /><ChevronRight size={20} strokeWidth={3} className="-ml-3" /></button>
+                {/* 2. Navigation */}
+                <div className="flex items-center gap-1">
+                    <button onClick={goToPrevPage} disabled={pageNumber <= 1} className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-20 transition-colors"><ChevronLeft size={24} /></button>
+                </div>
+
+                <div className="flex-1 flex flex-col gap-1.5 px-2">
+                    <div className="flex justify-between items-center px-1">
+                        <span className="text-[9px] font-black font-mono text-white/30 uppercase tracking-tighter">Page {pageNumber}</span>
+                        <span className="text-[9px] font-black font-mono text-white/30 uppercase tracking-tighter">{numPages}</span>
+                    </div>
+                    <div className="relative h-6 flex items-center group/slider">
+                        <div className="absolute w-full h-1 bg-white/10 rounded-full" />
+                        <div
+                            className="absolute h-1 bg-white rounded-full transition-all duration-300"
+                            style={{ width: `${(pageNumber / numPages) * 100}%` }}
+                        />
+                        <input
+                            type="range"
+                            min="1"
+                            max={numPages}
+                            value={pageNumber}
+                            onChange={(e) => setPageNumber(parseInt(e.target.value))}
+                            className="absolute w-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div
+                            className="absolute w-3.5 h-3.5 bg-white rounded-full shadow-xl transition-all pointer-events-none group-hover/slider:scale-125"
+                            style={{ left: `calc(${(pageNumber / numPages) * 100}% - 7px)` }}
+                        />
                     </div>
                 </div>
-            )}
+
+                <div className="flex items-center gap-1">
+                    <button onClick={goToNextPage} disabled={pageNumber >= numPages} className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-20 transition-colors"><ChevronRight size={24} /></button>
+                </div>
+            </div>
         </div>
     )
 }
