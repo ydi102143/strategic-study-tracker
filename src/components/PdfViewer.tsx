@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { ChevronLeft, ChevronRight, Maximize, Edit3, Move, Eraser, ArrowLeft, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit3, Eraser, ArrowLeft, ZoomIn, ZoomOut, RefreshCw, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { updateProgress, getAnnotations } from '@/app/actions'
 import { AnnotationCanvas } from './AnnotationCanvas'
@@ -85,44 +85,48 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             className={`flex flex-col h-screen bg-black overflow-hidden relative ${isPencilMode ? 'select-none touch-none' : ''}`}
             style={isPencilMode ? { WebkitUserSelect: 'none', userSelect: 'none' } : {}}
         >
-            {/* Top Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-surface-1/50 backdrop-blur-md border-b border-white/5 z-50">
+            {/* Top Header - Optimized for Pencil Mode */}
+            <div className={`flex items-center justify-between px-6 py-4 bg-surface-1/50 backdrop-blur-md border-b border-white/5 z-50 transition-all ${isPencilMode ? 'py-1' : ''}`}>
                 <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => router.back()}
-                        className="p-2 -ml-2 text-gray-400 hover:text-white transition group"
-                    >
-                        <ArrowLeft size={24} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
-                    </button>
-                    <div className="h-4 w-[1px] bg-white/10 mx-1" />
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="number"
-                            min="1"
-                            max={numPages}
-                            value={pageNumber}
-                            onChange={(e) => {
-                                const val = parseInt(e.target.value)
-                                if (!isNaN(val) && val >= 1 && val <= numPages) {
-                                    setPageNumber(val)
-                                }
-                            }}
-                            className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-black font-mono text-center focus:border-white/30 outline-none transition-all"
-                        />
-                        <span className="text-[10px] font-black tracking-widest text-white/20 uppercase">of</span>
-                        <span className="text-[10px] font-black tracking-widest text-white/40 tabular-nums">
-                            {numPages}
-                        </span>
-                    </div>
+                    {!isPencilMode && (
+                        <>
+                            <button
+                                onClick={() => router.back()}
+                                className="p-2 -ml-2 text-gray-400 hover:text-white transition group"
+                            >
+                                <ArrowLeft size={24} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
+                            </button>
+                            <div className="h-4 w-[1px] bg-white/10 mx-1" />
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={numPages}
+                                    value={pageNumber}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value)
+                                        if (!isNaN(val) && val >= 1 && val <= numPages) {
+                                            setPageNumber(val)
+                                        }
+                                    }}
+                                    className="w-12 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs font-black font-mono text-center focus:border-white/30 outline-none transition-all"
+                                />
+                                <span className="text-[10px] font-black tracking-widest text-white/20 uppercase">of</span>
+                                <span className="text-[10px] font-black tracking-widest text-white/40 tabular-nums">
+                                    {numPages}
+                                </span>
+                            </div>
+                        </>
+                    )}
                 </div>
 
-                {/* Handwriting Toolbar - Highest Z-Index */}
-                <div className="flex items-center gap-2 bg-surface-2 p-1 rounded-2xl border border-white/5 z-[400] relative">
+                {/* Handwriting Toolbar - The only thing that stays in Pencil Mode */}
+                <div className={`flex items-center gap-2 bg-surface-2 p-1 rounded-2xl border border-white/5 z-[400] transition-all ${isPencilMode ? 'scale-110 shadow-2xl' : ''}`}>
                     <button
                         onClick={() => { setIsPencilMode(!isPencilMode); setActiveTool('pen') }}
                         className={`p-2.5 rounded-xl transition-all ${isPencilMode && activeTool === 'pen' ? 'bg-white text-black' : 'bg-transparent text-gray-500 hover:text-white'}`}
                     >
-                        <Edit3 size={18} strokeWidth={2.5} />
+                        {isPencilMode ? <X size={18} strokeWidth={2.5} /> : <Edit3 size={18} strokeWidth={2.5} />}
                     </button>
 
                     {isPencilMode && (
@@ -148,38 +152,39 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                             </div>
                         </>
                     )}
-
-                    <div className="h-4 w-[1px] bg-white/10 mx-1" />
-
-                    <button
-                        onClick={() => setIsPencilMode(false)}
-                        className={`p-2.5 rounded-xl transition-all ${!isPencilMode ? 'bg-white text-black' : 'bg-transparent text-gray-400 border border-transparent hover:border-white/10'}`}
-                    >
-                        <Move size={18} />
-                    </button>
                 </div>
 
-                {/* Right side tools (Disable when drawing) */}
-                <div className={`flex items-center gap-1 transition-opacity ${isPencilMode ? 'opacity-20 pointer-events-none' : ''}`}>
-                    <button
-                        onClick={() => {
-                            setHasSyncedTotalPages(false)
-                            router.refresh()
-                        }}
-                        className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl flex items-center gap-2"
-                        title="ページ数を再確認"
-                    >
-                        <RefreshCw size={18} className={isPending ? "animate-spin" : ""} />
-                    </button>
-                    <div className="h-4 w-[1px] bg-white/10 mx-1" />
-                    <button onClick={() => setScale(s => Math.max(0.3, s - 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomOut size={20} /></button>
-                    <button onClick={() => setScale(1.0)} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition px-2">Reset</button>
-                    <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomIn size={20} /></button>
+                {/* Right side tools */}
+                <div className="flex items-center gap-1">
+                    {!isPencilMode ? (
+                        <>
+                            <button
+                                onClick={() => {
+                                    setHasSyncedTotalPages(false)
+                                    router.refresh()
+                                }}
+                                className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl flex items-center gap-2"
+                                title="ページ数を再確認"
+                            >
+                                <RefreshCw size={18} className={isPending ? "animate-spin" : ""} />
+                            </button>
+                            <div className="h-4 w-[1px] bg-white/10 mx-1" />
+                            <button onClick={() => setScale(s => Math.max(0.3, s - 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomOut size={20} /></button>
+                            <button onClick={() => setScale(1.0)} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white transition px-2">Reset</button>
+                            <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="text-gray-400 hover:text-white transition p-3 hover:bg-white/5 rounded-xl"><ZoomIn size={20} /></button>
+                        </>
+                    ) : (
+                        <div className="w-10" /> // Placeholder to keep center alignment
+                    )}
                 </div>
             </div>
 
-            {/* Main Content - Raised Z-Index when drawing to overlap the Header's non-essential areas */}
-            <div className={`flex-1 overflow-auto flex justify-center items-start pt-0 pb-20 scrollbar-hide relative bg-black ${isPencilMode ? 'touch-none select-none z-[300]' : 'touch-pan-y'}`}>
+            {/* Main Content */}
+            <div
+                className={`flex-1 overflow-auto flex justify-center items-start pt-0 pb-20 scrollbar-hide relative bg-black ${isPencilMode ? 'touch-none select-none z-[300]' : 'touch-pan-y'}`}
+                style={isPencilMode ? { WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } : {}}
+                onContextMenu={(e) => isPencilMode && e.preventDefault()}
+            >
                 <div className="relative shadow-2xl bg-white origin-top">
                     <Document
                         file={pdfUrl}
