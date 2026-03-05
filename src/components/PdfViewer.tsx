@@ -28,7 +28,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     // Handwriting tools state
     const [isPencilMode, setIsPencilMode] = useState(false)
     const [activeTool, setActiveTool] = useState<'pen' | 'eraser'>('pen')
-    const [activeColor, setActiveColor] = useState('#FFFFFF')
+    const [activeColor, setActiveColor] = useState('#000000')
     const [lineWidth, setLineWidth] = useState(2)
     const [initialAnnotations, setInitialAnnotations] = useState<any[]>([])
     const router = useRouter()
@@ -134,11 +134,11 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                             <div className="h-4 w-[1px] bg-white/10 mx-1" />
 
                             <div className="flex gap-1 px-2">
-                                {['#FFFFFF', '#FF3B30', '#007AFF', '#FFCC00'].map(c => (
+                                {['#000000', '#FF3B30', '#007AFF', '#FFFFFF'].map(c => (
                                     <button
                                         key={c}
                                         onClick={() => { setActiveColor(c); setActiveTool('pen') }}
-                                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${activeColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`}
+                                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${activeColor === c ? 'border-white scale-110 shadow-lg' : 'border-white/10'}`}
                                         style={{ backgroundColor: c }}
                                     />
                                 ))}
