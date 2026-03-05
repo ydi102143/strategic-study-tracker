@@ -117,7 +117,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 </div>
 
                 {/* Handwriting Toolbar */}
-                <div className="flex items-center gap-2 bg-surface-2 p-1 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-2 bg-surface-2 p-1 rounded-2xl border border-white/5 z-[250] relative">
                     <button
                         onClick={() => { setIsPencilMode(!isPencilMode); setActiveTool('pen') }}
                         className={`p-2.5 rounded-xl transition-all ${isPencilMode && activeTool === 'pen' ? 'bg-white text-black' : 'bg-transparent text-gray-500 hover:text-white'}`}

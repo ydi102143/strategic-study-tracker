@@ -31,13 +31,16 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
     const isDrawingRef = useRef(false)
     const lastPointRef = useRef<Point | null>(null)
     const currentPointsRef = useRef<Point[]>([])
-    const [allStrokes, setAllStrokes] = useState<Stroke[]>([])
+
+    // 全画データを保持するRef（ちらつき防止のためReact Stateとは別に管理）
+    const strokesRef = useRef<Stroke[]>([])
+    const [_, forceUpdate] = useState({})
 
     // 高精細（Retina）ディスプレイ対応のためのスケール取得
     const getPixelRatio = () => (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)
 
     // 全画の再描画（Reactの状態が変更された時やリサイズ時に呼び出し）
-    const drawAll = useCallback((strokes: Stroke[]) => {
+    const drawAll = useCallback(() => {
         const canvas = canvasRef.current
         const ctx = canvas?.getContext('2d')
         if (!ctx || !canvas) return
@@ -45,11 +48,12 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         const ratio = getPixelRatio()
         ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-        strokes.forEach(stroke => {
+        strokesRef.current.forEach(stroke => {
             if (!stroke.points || stroke.points.length < 2) return
             ctx.beginPath()
             ctx.strokeStyle = stroke.color
-            ctx.lineWidth = stroke.width * ratio // 倍率に合わせて太さを調整
+            // 感度向上のため、少し太めに補正
+            ctx.lineWidth = (stroke.width + 0.5) * ratio
             ctx.lineJoin = 'round'
             ctx.lineCap = 'round'
 
@@ -65,12 +69,12 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
 
     // 初回ロード
     useEffect(() => {
-        const strokes = initialAnnotations.map(ann => ({
+        strokesRef.current = initialAnnotations.map(ann => ({
             id: ann.id,
             ...ann.data
         }))
-        setAllStrokes(strokes)
-    }, [initialAnnotations])
+        drawAll()
+    }, [initialAnnotations, drawAll])
 
     // リサイズ対応（PDFのサイズに合わせる）
     useEffect(() => {
@@ -91,7 +95,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 canvas.style.width = `${width}px`
                 canvas.style.height = `${height}px`
 
-                drawAll(allStrokes)
+                drawAll()
             }
         }
 
@@ -100,16 +104,17 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         updateSize()
 
         return () => observer.disconnect()
-    }, [allStrokes, drawAll])
+    }, [drawAll])
 
     const findAndEraseStroke = async (x: number, y: number) => {
         const threshold = 0.02
-        const strokeToErase = allStrokes.find(stroke =>
+        const strokeToErase = strokesRef.current.find(stroke =>
             stroke.points.some(p => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold)
         )
 
         if (strokeToErase?.id) {
-            setAllStrokes(prev => prev.filter(s => s.id !== strokeToErase.id))
+            strokesRef.current = strokesRef.current.filter(s => s.id !== strokeToErase.id)
+            drawAll()
             try {
                 await deleteAnnotation(strokeToErase.id)
             } catch (err) {
@@ -121,8 +126,9 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
     const startAction = (e: React.PointerEvent) => {
         if (!isActive) return
 
-        // イベントの伝播を完全に止める（背景のテキスト選択などを防ぐ）
+        // 直ちにイベントを完全に停止（背景のResetボタンなどへの全ての干渉を遮断）
         e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
         if (e.cancelable) e.preventDefault()
 
         const canvas = canvasRef.current
@@ -135,6 +141,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         const y = (e.clientY - rect.top) / rect.height
 
         if (mode === 'eraser') {
+            // 消しゴム機能...
             findAndEraseStroke(x, y)
         } else {
             isDrawingRef.current = true
@@ -147,10 +154,11 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
     const doAction = (e: React.PointerEvent) => {
         if (!isActive) return
         e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
         if (e.cancelable) e.preventDefault()
 
         const canvas = canvasRef.current
-        if (!canvas) return
+        if (!canvas || !isDrawingRef.current) return
 
         const rect = canvas.getBoundingClientRect()
         const x = (e.clientX - rect.left) / rect.width
@@ -161,8 +169,6 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
             return
         }
 
-        if (!isDrawingRef.current) return
-
         const ctx = canvas.getContext('2d')
         if (!ctx) return
 
@@ -171,7 +177,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
 
         // 即時描画（Reactの再レンダリングを介さないので爆速）
         ctx.strokeStyle = color
-        ctx.lineWidth = lineWidth * ratio
+        ctx.lineWidth = (lineWidth + 0.5) * ratio
         ctx.lineJoin = 'round'
         ctx.lineCap = 'round'
         ctx.beginPath()
@@ -189,7 +195,6 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
 
     const stopAction = async (e: React.PointerEvent) => {
         if (!isActive) return
-
         const canvas = canvasRef.current
         if (canvas) canvas.releasePointerCapture(e.pointerId)
 
@@ -203,8 +208,8 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 width: lineWidth
             }
 
-            // UIを更新
-            setAllStrokes(prev => [...prev, { ...newStrokeContent, id: 'temp-' + Date.now() }])
+            // Refを即時更新してから、保存中も表示を維持する
+            strokesRef.current.push({ ...newStrokeContent, id: 'temp-' + Date.now() })
 
             try {
                 const saved = await saveAnnotation({
@@ -213,11 +218,16 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                     type: 'stroke',
                     data: newStrokeContent
                 })
-                // 仮IDを本物へ
-                setAllStrokes(prev => prev.map(s => s.id?.toString().startsWith('temp') ? { ...newStrokeContent, id: saved.id } : s))
+                // 仮IDを差し替え
+                strokesRef.current = strokesRef.current.map(s =>
+                    s.id?.toString().startsWith('temp') ? { ...newStrokeContent, id: saved.id } : s
+                )
+                // このタイミングで一回だけRedrawして永続化を確定
+                drawAll()
             } catch (err) {
                 console.error('Save failed:', err)
-                setAllStrokes(prev => prev.filter(s => !s.id?.toString().startsWith('temp')))
+                strokesRef.current = strokesRef.current.filter(s => !s.id?.toString().startsWith('temp'))
+                drawAll()
             }
         }
 
@@ -241,7 +251,8 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 left: 0,
                 display: 'block'
             }}
-            className={`z-[100] ${isActive ? (mode === 'pen' ? 'cursor-crosshair' : 'cursor-cell') : 'pointer-events-none'}`}
+            // z-index を 200 に上げ、PDF領域が最前面にくるようにする
+            className={`z-[200] ${isActive ? (mode === 'pen' ? 'cursor-crosshair' : 'cursor-cell') : 'pointer-events-none'}`}
         />
     )
 }
