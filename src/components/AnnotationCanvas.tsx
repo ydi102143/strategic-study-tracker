@@ -134,6 +134,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
 
     const doAction = (e: React.PointerEvent) => {
         if (!isActive || !isDrawingRef.current) return
+
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
         if (e.cancelable) e.preventDefault()
@@ -143,26 +144,33 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         if (!ctx || !canvas) return
 
         const rect = canvas.getBoundingClientRect()
-        const x = (e.clientX - rect.left) / rect.width
-        const y = (e.clientY - rect.top) / rect.height
         const ratio = getPixelRatio()
 
-        // 【超高速描画】前回の点から今回の点までを「即座に」描画する
-        const lastPoint = lastPointRef.current
-        if (lastPoint) {
-            ctx.beginPath()
-            ctx.strokeStyle = color
-            ctx.lineWidth = lineWidth * ratio
-            ctx.lineJoin = 'round'
-            ctx.lineCap = 'round'
-            ctx.moveTo(lastPoint.x * canvas.width, lastPoint.y * canvas.height)
-            ctx.lineTo(x * canvas.width, y * canvas.height)
-            ctx.stroke()
-        }
+        // 高速描画対応: CoalescedEvents（合体されたイベント）から全サブポイントを取得
+        // これをしないと、素早く動かした時に点が飛び飛びになる
+        const events = (e.nativeEvent as any).getCoalescedEvents?.() || [e.nativeEvent]
 
-        const newPoint = { x, y, p: 0.5 }
-        lastPointRef.current = newPoint
-        currentPointsRef.current.push(newPoint)
+        ctx.strokeStyle = color
+        ctx.lineWidth = lineWidth * ratio
+        ctx.lineJoin = 'round'
+        ctx.lineCap = 'round'
+
+        for (const ev of events) {
+            const x = (ev.clientX - rect.left) / rect.width
+            const y = (ev.clientY - rect.top) / rect.height
+            const newPoint = { x, y, p: 0.5 }
+
+            const lastPoint = lastPointRef.current
+            if (lastPoint) {
+                ctx.beginPath()
+                ctx.moveTo(lastPoint.x * canvas.width, lastPoint.y * canvas.height)
+                ctx.lineTo(x * canvas.width, y * canvas.height)
+                ctx.stroke()
+            }
+
+            lastPointRef.current = newPoint
+            currentPointsRef.current.push(newPoint)
+        }
     }
 
     const stopAction = async (e: React.PointerEvent) => {
