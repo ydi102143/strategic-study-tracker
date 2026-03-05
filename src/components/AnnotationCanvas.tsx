@@ -134,12 +134,14 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
 
         const handleDown = (e: PointerEvent) => {
             if (!isActive) return
-            if (e.pointerType === 'touch' && e.pressure === 0) return
 
+            // どんな入力（指・ペン）であっても、背景のPDFにイベントを届かせないために
+            // 判定（Pencilかどうか）の前に preventDefault を行う。これが「青膜」と「メニュー」を防ぐ最重要の盾。
             e.preventDefault()
             e.stopImmediatePropagation()
-            // 選択の種を完全に断つ
             window.getSelection()?.removeAllRanges()
+
+            if (e.pointerType === 'touch' && e.pressure === 0) return
 
             isDrawingRef.current = true
             const rect = canvas.getBoundingClientRect()

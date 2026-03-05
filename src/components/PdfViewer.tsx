@@ -280,19 +280,21 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 onContextMenu={(e) => isPencilMode && e.preventDefault()}
             >
                 <div className="relative shadow-2xl bg-white origin-top">
-                    <Document
-                        file={pdfUrl}
-                        onLoadSuccess={onDocumentLoadSuccess}
-                        loading={<div className="p-20 text-white font-bold opacity-30 text-xs uppercase tracking-widest animate-pulse">Loading PDF...</div>}
-                    >
-                        <Page
-                            pageNumber={Math.min(pageNumber, numPages)}
-                            scale={scale}
-                            width={containerWidth}
-                            renderAnnotationLayer={false}
-                            renderTextLayer={false}
-                        />
-                    </Document>
+                    <div style={isPencilMode ? { pointerEvents: 'none' } : {}}>
+                        <Document
+                            file={pdfUrl}
+                            onLoadSuccess={onDocumentLoadSuccess}
+                            loading={<div className="p-20 text-white font-bold opacity-30 text-xs uppercase tracking-widest animate-pulse">Loading PDF...</div>}
+                        >
+                            <Page
+                                pageNumber={Math.min(pageNumber, numPages)}
+                                scale={scale}
+                                width={containerWidth}
+                                renderAnnotationLayer={false}
+                                renderTextLayer={false}
+                            />
+                        </Document>
+                    </div>
 
                     <AnnotationCanvas
                         materialId={materialId}
