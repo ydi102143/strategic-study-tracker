@@ -29,7 +29,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
 
-    // 背景固定用の裏キャンバス
+    // 背景固定用のキャッシュ
     const bufferCanvasRef = useRef<HTMLCanvasElement | null>(null)
     const bufferCtxRef = useRef<CanvasRenderingContext2D | null>(null)
 
@@ -37,16 +37,14 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
     const strokesRef = useRef<Stroke[]>([])
     const currentPointsRef = useRef<Point[]>([])
 
+    // 高速化：座標変換のキャッシュ
+    const rectRef = useRef<{ width: number; height: number; left: number; top: number } | null>(null)
+
     const getPixelRatio = () => (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)
 
-    // ベジェ描画エンジン
-    const drawBezier = (ctx: CanvasRenderingContext2D, points: Point[], color: string, width: number, w: number, h: number) => {
+    // 滑らかな曲線描画（高速版）
+    const drawSmoothPath = (ctx: CanvasRenderingContext2D, points: Point[], w: number, h: number) => {
         if (points.length < 2) return
-        ctx.beginPath()
-        ctx.strokeStyle = color
-        ctx.lineWidth = width
-        ctx.lineJoin = 'round'
-        ctx.lineCap = 'round'
         ctx.moveTo(points[0].x * w, points[0].y * h)
         for (let i = 1; i < points.length - 2; i++) {
             const xc = (points[i].x + points[i + 1].x) / 2 * w
@@ -57,44 +55,43 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
             const last = points[points.length - 1]
             ctx.lineTo(last.x * w, last.y * h)
         }
-        ctx.stroke()
     }
 
-    // 裏側に描画内容を固定する（高速化の肝）
+    // 全再描画（背景キャッシュの更新）
     const updateBuffer = useCallback(() => {
         const bg = bufferCanvasRef.current
         const bctx = bufferCtxRef.current
-        if (!bg || !bctx) return
-        const ratio = getPixelRatio()
-
-        bctx.clearRect(0, 0, bg.width, bg.height)
-        strokesRef.current.forEach(s => {
-            drawBezier(bctx, s.points, s.color, s.width * ratio, bg.width, bg.height)
-        })
-
-        // メイン画面へ即座に反映
         const canvas = canvasRef.current
         const ctx = ctxRef.current
-        if (canvas && ctx && bg.width > 0 && bg.height > 0) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height)
-            ctx.drawImage(bg, 0, 0)
-        }
+        if (!bg || !bctx || !canvas || !ctx) return
+
+        const ratio = getPixelRatio()
+        bctx.clearRect(0, 0, bg.width, bg.height)
+
+        strokesRef.current.forEach(s => {
+            bctx.beginPath()
+            bctx.strokeStyle = s.color
+            bctx.lineWidth = s.width * ratio
+            bctx.lineJoin = 'round'
+            bctx.lineCap = 'round'
+            drawSmoothPath(bctx, s.points, bg.width, bg.height)
+            bctx.stroke()
+        })
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(bg, 0, 0)
     }, [])
 
-    // コンテキストの初期化（再構築の防止）
+    // 初期化
     useEffect(() => {
-        const canvas = canvasRef.current
-        if (canvas && !ctxRef.current) {
-            ctxRef.current = canvas.getContext('2d', { desynchronized: true, alpha: true }) as CanvasRenderingContext2D
-        }
-        if (!bufferCanvasRef.current && typeof document !== 'undefined') {
-            const bg = document.createElement('canvas')
-            bufferCanvasRef.current = bg
-            bufferCtxRef.current = bg.getContext('2d', { alpha: true })
+        if (typeof document === 'undefined') return
+        if (!bufferCanvasRef.current) {
+            bufferCanvasRef.current = document.createElement('canvas')
+            bufferCtxRef.current = bufferCanvasRef.current.getContext('2d', { alpha: true })
         }
     }, [])
 
-    // 初期化とリサイズ管理
+    // リサイズとデータの反映
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) return
@@ -104,19 +101,18 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
             const bg = bufferCanvasRef.current
             if (parent && bg) {
                 const ratio = getPixelRatio()
-                const w = parent.clientWidth * ratio
-                const h = parent.clientHeight * ratio
+                const w = parent.clientWidth
+                const h = parent.clientHeight
 
-                // 無効なサイズの場合はスキップ
-                if (w === 0 || h === 0) return
+                canvas.width = w * ratio
+                canvas.height = h * ratio
+                canvas.style.width = w + 'px'
+                canvas.style.height = h + 'px'
 
-                canvas.width = w
-                canvas.height = h
-                canvas.style.width = parent.clientWidth + 'px'
-                canvas.style.height = parent.clientHeight + 'px'
+                bg.width = w * ratio
+                bg.height = h * ratio
 
-                bg.width = w
-                bg.height = h
+                rectRef.current = { width: w, height: h, left: canvas.getBoundingClientRect().left, top: canvas.getBoundingClientRect().top }
                 updateBuffer()
             }
         }
@@ -124,21 +120,20 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         const obs = new ResizeObserver(updateSize)
         if (canvas.parentElement) obs.observe(canvas.parentElement)
 
-        // DBデータの反映
         strokesRef.current = initialAnnotations.map(ann => ({ id: ann.id, ...ann.data }))
         updateSize()
 
         return () => obs.disconnect()
     }, [initialAnnotations, updateBuffer])
 
-    // ネイティブレイヤーでの超高速イベントハンドリング
+    // ネイティブイベントによる超高速処理
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) return
+        ctxRef.current = canvas.getContext('2d', { desynchronized: true, alpha: true })
 
         const handleDown = (e: PointerEvent) => {
             if (!isActive) return
-            // ペン入力と確実なタッチのみを許可（パームリジェクション）
             if (e.pointerType === 'touch' && e.pressure === 0) return
 
             e.preventDefault()
@@ -146,19 +141,19 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
 
             isDrawingRef.current = true
             const rect = canvas.getBoundingClientRect()
+            rectRef.current = { width: rect.width, height: rect.height, left: rect.left, top: rect.top }
+
             const x = (e.clientX - rect.left) / rect.width
             const y = (e.clientY - rect.top) / rect.height
             currentPointsRef.current = [{ x, y }]
 
             if (mode === 'eraser') {
                 const threshold = 0.02
-                const target = strokesRef.current.find(s =>
-                    s.points.some(p => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold)
-                )
-                if (target?.id) {
-                    strokesRef.current = strokesRef.current.filter(s => s.id !== target.id)
+                const found = strokesRef.current.find(s => s.points.some(p => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold))
+                if (found?.id) {
+                    strokesRef.current = strokesRef.current.filter(s => s.id !== found.id)
                     updateBuffer()
-                    deleteAnnotation(target.id)
+                    deleteAnnotation(found.id)
                 }
             }
             canvas.setPointerCapture(e.pointerId)
@@ -169,10 +164,9 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
             e.preventDefault()
             e.stopImmediatePropagation()
 
-            const canvas = canvasRef.current
             const ctx = ctxRef.current
-            if (!canvas || !ctx) return
-            const rect = canvas.getBoundingClientRect()
+            const rect = rectRef.current
+            if (!ctx || !rect) return
             const ratio = getPixelRatio()
 
             const coalesced = (e as any).getCoalescedEvents?.() || [e]
@@ -187,8 +181,11 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 const y = (ev.clientY - rect.top) / rect.height
                 const last = currentPointsRef.current[currentPointsRef.current.length - 1]
 
+                // 動的な間引き：距離があまりに近すぎる点は無視（計算コスト削減）
+                const dist = Math.sqrt(Math.pow(x - last.x, 2) + Math.pow(y - last.y, 2))
+                if (dist < 0.001) return
+
                 ctx.beginPath()
-                // Active stroke is drawn to the screen using un-scaled bounding rect coordinates
                 ctx.moveTo(last.x * rect.width * ratio, last.y * rect.height * ratio)
                 ctx.lineTo(x * rect.width * ratio, y * rect.height * ratio)
                 ctx.stroke()
@@ -239,6 +236,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 top: 0, left: 0,
                 display: 'block',
                 willChange: 'transform, contents',
+                transform: 'translateZ(0)', // GPUレイヤーを強制
                 cursor: isActive ? (mode === 'pen' ? 'crosshair' : 'cell') : 'default',
                 pointerEvents: isActive ? 'auto' : 'none'
             }}
