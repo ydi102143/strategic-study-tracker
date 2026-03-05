@@ -169,6 +169,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
             e.preventDefault()
             e.stopImmediatePropagation()
 
+            const canvas = canvasRef.current
             const ctx = ctxRef.current
             if (!canvas || !ctx) return
             const rect = canvas.getBoundingClientRect()
@@ -187,8 +188,9 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 const last = currentPointsRef.current[currentPointsRef.current.length - 1]
 
                 ctx.beginPath()
-                ctx.moveTo(last.x * canvas.width, last.y * canvas.height)
-                ctx.lineTo(x * canvas.width, y * canvas.height)
+                // Active stroke is drawn to the screen using un-scaled bounding rect coordinates
+                ctx.moveTo(last.x * rect.width * ratio, last.y * rect.height * ratio)
+                ctx.lineTo(x * rect.width * ratio, y * rect.height * ratio)
                 ctx.stroke()
 
                 currentPointsRef.current.push({ x, y })
