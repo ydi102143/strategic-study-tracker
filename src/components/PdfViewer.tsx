@@ -81,20 +81,24 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     useEffect(() => {
         if (!isPencilMode) return
 
-        // Create a style element to lock the entire body
+        // Create a style element to lock the entire body and all children
         const style = document.createElement('style')
         style.id = 'pencil-lock-style'
         style.innerHTML = `
-            body {
-                touch-action: none !important;
+            * {
                 -webkit-user-select: none !important;
-                user-select: none !important;
                 -webkit-touch-callout: none !important;
                 -webkit-tap-highlight-color: transparent !important;
+                user-select: none !important;
+            }
+            body {
+                touch-action: none !important;
                 overscroll-behavior: none !important;
                 overflow: hidden !important;
             }
-            input, button, a {
+            input, button, a, div[role="button"] {
+                -webkit-user-select: auto !important;
+                user-select: auto !important;
                 touch-action: auto !important;
             }
         `
@@ -109,7 +113,6 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             }
         }
 
-        // Active selection killer - prevents the "Blue Film"
         const killSelection = () => {
             if (isPencilMode) {
                 window.getSelection()?.removeAllRanges()
@@ -121,12 +124,14 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         // Multi-touch zoom prevention
         window.addEventListener('touchstart', (e) => {
             if (isPencilMode && e.touches.length > 1) killEvent(e)
+            if (isPencilMode) window.getSelection()?.removeAllRanges()
         }, { capture: true, passive: false })
-        // Context menu suppression
+
+        // OS Level events suppression
         window.addEventListener('contextmenu', killEvent, { capture: true })
-        // Selection killing
         window.addEventListener('selectstart', killEvent, { capture: true })
         window.addEventListener('selectionchange', killSelection, { capture: true })
+        window.addEventListener('gesturestart', killEvent, { capture: true })
 
         return () => {
             document.getElementById('pencil-lock-style')?.remove()
@@ -135,6 +140,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             window.removeEventListener('contextmenu', killEvent, { capture: true })
             window.removeEventListener('selectstart', killEvent, { capture: true })
             window.removeEventListener('selectionchange', killSelection, { capture: true })
+            window.removeEventListener('gesturestart', killEvent, { capture: true })
         }
     }, [isPencilMode])
 
