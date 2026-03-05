@@ -104,6 +104,12 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         const canvas = canvasRef.current
         if (!canvas) return
 
+        // ポインターをキャプチャして、枠外に出てもイベントを継続させる
+        canvas.setPointerCapture(e.pointerId)
+
+        // ブラウザの標準動作（選択など）を抑制
+        if (e.cancelable) e.preventDefault()
+
         const rect = canvas.getBoundingClientRect()
         const x = (e.clientX - rect.left) / canvas.width
         const y = (e.clientY - rect.top) / canvas.height
@@ -117,9 +123,15 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
     }
 
     const doAction = (e: React.PointerEvent) => {
+        if (!isDrawing && mode !== 'eraser') return
         if (!isActive) return
+
         const canvas = canvasRef.current
         if (!canvas) return
+
+        // 描画中のブラウザ動作（スクロールなど）を抑制
+        if (e.cancelable) e.preventDefault()
+
         const rect = canvas.getBoundingClientRect()
         const x = (e.clientX - rect.left) / canvas.width
         const y = (e.clientY - rect.top) / canvas.height
@@ -129,7 +141,6 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
             return
         }
 
-        if (!isDrawing) return
         const ctx = canvas.getContext('2d')
         if (!ctx) return
 
@@ -150,7 +161,12 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
         }
     }
 
-    const stopAction = async () => {
+    const stopAction = async (e: React.PointerEvent) => {
+        const canvas = canvasRef.current
+        if (canvas) {
+            canvas.releasePointerCapture(e.pointerId)
+        }
+
         if (!isDrawing) return
         setIsDrawing(false)
 
@@ -161,7 +177,6 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 width: lineWidth
             }
 
-            // 仮のIDでUIを更新（保存後に本物のIDに差し替える）
             setAllStrokes(prev => [...prev, { ...newStrokeContent, id: 'temp-' + Date.now() }])
 
             try {
@@ -171,12 +186,9 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                     type: 'stroke',
                     data: newStrokeContent
                 })
-
-                // 保存された本物のIDを反映
                 setAllStrokes(prev => prev.map(s => s.id?.toString().startsWith('temp') ? { ...newStrokeContent, id: saved.id } : s))
             } catch (err) {
                 console.error('Save failed:', err)
-                // 失敗した場合はUIから消す
                 setAllStrokes(prev => prev.filter(s => !s.id?.toString().startsWith('temp')))
             }
         }
@@ -190,8 +202,12 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
             onPointerMove={doAction}
             onPointerUp={stopAction}
             onPointerLeave={stopAction}
-            style={{ touchAction: 'none' }}
-            className={`absolute inset-0 z-10 ${isActive ? (mode === 'pen' ? 'cursor-crosshair' : 'cursor-cell') : 'pointer-events-none'}`}
+            style={{
+                touchAction: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none'
+            }}
+            className={`absolute inset-0 z-[60] ${isActive ? (mode === 'pen' ? 'cursor-crosshair' : 'cursor-cell') : 'pointer-events-none'}`}
         />
     )
 }

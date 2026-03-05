@@ -28,7 +28,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     // Handwriting tools state
     const [isPencilMode, setIsPencilMode] = useState(false)
     const [activeTool, setActiveTool] = useState<'pen' | 'eraser'>('pen')
-    const [activeColor, setActiveColor] = useState('#000000')
+    const [activeColor, setActiveColor] = useState('#FF3B30')
     const [lineWidth, setLineWidth] = useState(2)
     const [initialAnnotations, setInitialAnnotations] = useState<any[]>([])
     const router = useRouter()
@@ -175,7 +175,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             </div>
 
             {/* Main Content - Minimal padding for maximum PDF size */}
-            <div className={`flex-1 overflow-auto flex justify-center items-start pt-0 pb-20 scrollbar-hide select-none relative bg-black ${isPencilMode ? 'touch-none' : 'touch-pan-y'}`}>
+            <div className={`flex-1 overflow-auto flex justify-center items-start pt-0 pb-20 scrollbar-hide relative bg-black ${isPencilMode ? 'touch-none select-none' : 'touch-pan-y'}`}>
                 <div className="relative shadow-2xl bg-white origin-top">
                     <Document
                         file={pdfUrl}
