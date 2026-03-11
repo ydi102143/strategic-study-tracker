@@ -526,3 +526,51 @@ export async function translateText(text: string) {
         return "翻訳エラーが発生しました"
     }
 }
+
+export async function askAi(text: string) {
+    const cleanedText = cleanPdfText(text)
+    if (!cleanedText || cleanedText.length === 0) return ""
+
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+        return "AI API Keyが設定されていません。.envファイルにGoogle Gemini API Keyを設定してください。"
+    }
+
+    try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `あなたは学習支援アシスタントです。以下の学習資料から抽出されたテキストについて、分かりやすい日本語で解説、または必要に応じて翻訳してください。
+回答は簡潔かつ丁寧に行ってください。
+
+抽出テキスト:
+"${cleanedText}"`
+                    }]
+                }]
+            })
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            console.error("Gemini API error:", errorData)
+            return "AIとの通信中にエラーが発生しました。"
+        }
+
+        const data = await response.json()
+        if (data && data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+            return data.candidates[0].content.parts[0].text
+        }
+
+        return "AIから有効な回答が得られませんでした。"
+    } catch (error) {
+        console.error("AI connection error:", error)
+        return "AIサービスに接続できませんでした。"
+    }
+}

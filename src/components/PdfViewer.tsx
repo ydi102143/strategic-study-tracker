@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { ChevronLeft, ChevronRight, Edit3, Eraser, ArrowLeft, ZoomIn, ZoomOut, RefreshCw, X, Hand, Languages } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { updateProgress, getAnnotations, translateText } from '@/app/actions'
+import { updateProgress, getAnnotations, translateText, askAi } from '@/app/actions'
 import { useRef, useMemo, useCallback } from 'react'
 import { AnnotationCanvas } from './AnnotationCanvas'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -173,7 +173,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     const goToNextPage = () => setPageNumber(p => Math.min(numPages, p + 1))
     const handleResetScale = () => setScale(1.0)
 
-    const handleTranslate = async (boundingBox: { left: number, top: number, right: number, bottom: number }) => {
+    const handleAiAssistant = async (boundingBox: { left: number, top: number, right: number, bottom: number }) => {
         if (!pdfPageRef.current) return
 
         setIsTranslating(true)
@@ -189,10 +189,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                     const tx = item.transform[4]
                     const ty = item.transform[5]
 
-                    // PDF.js固有の変換ユーティリティを使用して正確な座標（Viewport空間）を取得
                     const [vx, vy] = viewport.convertToViewportPoint(tx, ty)
-
-                    // 0-1の正規化座標に変換してBounding Boxと比較
                     const nx = vx / viewport.width
                     const ny = vy / viewport.height
 
@@ -206,14 +203,14 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 .join(' ')
 
             if (extractedText.trim()) {
-                const translated = await translateText(extractedText)
-                setTranslationResult({ original: extractedText, translated })
+                const aiResponse = await askAi(extractedText)
+                setTranslationResult({ original: extractedText, translated: aiResponse })
             } else {
                 setTranslationResult({ original: "", translated: "テキストが見つかりませんでした。範囲を変えてお試しください。" })
             }
         } catch (error) {
-            console.error("Extraction error:", error)
-            setTranslationResult({ original: "", translated: "テキストの抽出に失敗しました。" })
+            console.error("AI Assistant error:", error)
+            setTranslationResult({ original: "", translated: "AIによる解析に失敗しました。" })
         } finally {
             setIsTranslating(false)
         }
@@ -357,7 +354,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                         mode={activeTool}
                         color={activeColor}
                         lineWidth={lineWidth}
-                        onTranslate={handleTranslate}
+                        onTranslate={handleAiAssistant}
                     />
                 </div>
             </div>
@@ -367,8 +364,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-lg bg-surface-2/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl z-[700] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-2 text-white/40">
-                            <Languages size={18} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Translation Result</span>
+                            <Languages size={18} className="text-blue-400" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">AI Assistant</span>
                         </div>
                         <button onClick={() => setTranslationResult(null)} className="p-1 text-white/20 hover:text-white transition">
                             <X size={20} />
@@ -377,16 +374,16 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
                     {isTranslating ? (
                         <div className="py-8 flex flex-col items-center gap-4">
-                            <div className="w-8 h-8 border-2 border-white/10 border-t-white rounded-full animate-spin" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Translating...</p>
+                            <div className="w-8 h-8 border-2 border-white/5 border-t-blue-500 rounded-full animate-spin" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white/40">AI is thinking...</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                 <p className="text-xs text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
                             </div>
-                            <div className="p-5 bg-white text-black rounded-2xl shadow-xl">
-                                <p className="text-sm font-bold leading-relaxed">{translationResult?.translated}</p>
+                            <div className="p-5 bg-white text-black rounded-2xl shadow-xl overflow-auto max-h-[40vh]">
+                                <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap">{translationResult?.translated}</p>
                             </div>
                         </div>
                     )}
@@ -415,8 +412,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                         onClick={() => { setIsPencilMode(true); setActiveTool('translate') }}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isPencilMode && activeTool === 'translate' ? 'bg-white text-black shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
                     >
-                        <Languages size={16} strokeWidth={3} />
-                        <span className="hidden sm:inline">Translate</span>
+                        <Languages size={16} strokeWidth={3} className={isPencilMode && activeTool === 'translate' ? 'text-blue-500' : ''} />
+                        <span className="hidden sm:inline">AI Assistant</span>
                     </button>
                 </div>
 
