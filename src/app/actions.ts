@@ -1,5 +1,6 @@
 'use server'
 
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -537,17 +538,10 @@ export async function askAi(text: string) {
     }
 
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: `あなたは非常に優秀な学習支援AIアシスタントです。
+        const prompt = `あなたは非常に優秀な学習支援AIアシスタントです。
 提供されたテキストを単に翻訳するだけでなく、以下の内容を含めて日本語で詳しく解説してください：
 
 1. 要約・翻訳（自然な日本語で）
@@ -557,33 +551,13 @@ export async function askAi(text: string) {
 回答は読みやすく、学習の助けになるように構成してください。
 
 抽出テキスト:
-"${cleanedText}"`
-                    }]
-                }]
-            })
-        })
+"${cleanedText}"`;
 
-        if (!response.ok) {
-            const status = response.status;
-            let errorDetail = "";
-            try {
-                const errorData = await response.json();
-                errorDetail = JSON.stringify(errorData);
-                console.error("Gemini API error:", errorData);
-            } catch (e) {
-                errorDetail = await response.text();
-            }
-            return `AIエラー Ver.5 (${status}): ${errorDetail.substring(0, 100)}`;
-        }
-
-        const data = await response.json()
-        if (data && data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-            return data.candidates[0].content.parts[0].text
-        }
-
-        return "AIから有効な回答が得られませんでした。形式が異なっています。"
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
     } catch (error) {
-        console.error("AI connection error:", error)
-        return `AI接続エラー: ${error instanceof Error ? error.message : String(error)}`
+        console.error("AI Assistant Error:", error);
+        return `AIエラー: ${error instanceof Error ? error.message : String(error)}`;
     }
 }
