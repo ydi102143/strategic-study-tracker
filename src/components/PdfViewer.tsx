@@ -39,6 +39,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     // Translation State
     const [translationResult, setTranslationResult] = useState<{ original: string, translated: string } | null>(null)
     const [isTranslating, setIsTranslating] = useState(false)
+    const [pendingText, setPendingText] = useState<string | null>(null)
     const pdfPageRef = useRef<any>(null)
 
     // Window Resize Handler - Maximize for iPad
@@ -178,6 +179,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
         setIsTranslating(true)
         setTranslationResult(null)
+        setPendingText(null)
 
         try {
             const page = pdfPageRef.current
@@ -203,14 +205,29 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 .join(' ')
 
             if (extractedText.trim()) {
-                const aiResponse = await askAi(extractedText)
-                setTranslationResult({ original: extractedText, translated: aiResponse })
+                setPendingText(extractedText)
             } else {
                 setTranslationResult({ original: "", translated: "テキストが見つかりませんでした。範囲を変えてお試しください。" })
             }
         } catch (error) {
             console.error("AI Assistant error:", error)
-            setTranslationResult({ original: "", translated: "AIによる解析に失敗しました。" })
+            setTranslationResult({ original: "", translated: "テキストの抽出に失敗しました。" })
+        } finally {
+            setIsTranslating(false)
+        }
+    }
+
+    const submitAiRequest = async (prompt?: string) => {
+        if (!pendingText) return
+
+        setIsTranslating(true)
+        try {
+            const aiResponse = await askAi(pendingText, prompt)
+            setTranslationResult({ original: pendingText, translated: aiResponse })
+            setPendingText(null)
+        } catch (error) {
+            console.error("AI Request error:", error)
+            setTranslationResult({ original: pendingText, translated: "AIによる解析に失敗しました。" })
         } finally {
             setIsTranslating(false)
         }
@@ -360,14 +377,14 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             </div>
 
             {/* Translation Result UI */}
-            {(isTranslating || translationResult) && (
+            {(isTranslating || translationResult || pendingText) && (
                 <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-lg bg-surface-2/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl z-[700] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-2 text-white/40">
                             <Languages size={18} className="text-blue-400" />
                             <span className="text-[10px] font-black uppercase tracking-widest">AI Assistant</span>
                         </div>
-                        <button onClick={() => setTranslationResult(null)} className="p-1 text-white/20 hover:text-white transition">
+                        <button onClick={() => { setTranslationResult(null); setPendingText(null) }} className="p-1 text-white/20 hover:text-white transition">
                             <X size={20} />
                         </button>
                     </div>
@@ -376,6 +393,32 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                         <div className="py-8 flex flex-col items-center gap-4">
                             <div className="w-8 h-8 border-2 border-white/5 border-t-blue-500 rounded-full animate-spin" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-white/40">AI is thinking...</p>
+                        </div>
+                    ) : pendingText ? (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-white/40">対象テキストの確認</label>
+                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 max-h-[150px] overflow-auto">
+                                    <p className="text-xs text-white/50 leading-relaxed italic">"{pendingText}"</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => submitAiRequest("この文章を自然な日本語に翻訳してください。")}
+                                    className="flex flex-col items-center gap-2 p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+                                >
+                                    <Languages size={24} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                                    <span className="text-sm font-bold text-white">翻訳する</span>
+                                </button>
+                                <button
+                                    onClick={() => submitAiRequest("この文章の内容を初心者にも分かりやすく詳しく解説してください。重要な用語があればそれも説明してください。")}
+                                    className="flex flex-col items-center gap-2 p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+                                >
+                                    <Edit3 size={24} className="text-purple-400 group-hover:scale-110 transition-transform" />
+                                    <span className="text-sm font-bold text-white">解説する</span>
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-4">

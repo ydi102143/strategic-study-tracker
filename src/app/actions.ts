@@ -528,7 +528,7 @@ export async function translateText(text: string) {
     }
 }
 
-export async function askAi(text: string) {
+export async function askAi(text: string, userPrompt?: string) {
     const cleanedText = cleanPdfText(text)
     if (!cleanedText || cleanedText.length === 0) return ""
 
@@ -543,6 +543,32 @@ export async function askAi(text: string) {
         // ご指定の API v1 と gemini-2.5-flash モデルを使用
         const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`
 
+        const promptText = userPrompt
+            ? `提供されたテキストに対し、以下の指示に従って詳細な解説または対応を行ってください。
+
+【ユーザーの追加指示】
+${userPrompt}
+
+【対象テキスト】
+"${cleanedText}"
+
+【出力ルール】
+1. 指示に基づき、文脈に合わせた自然な日本語で回答してください。
+2. 重要な概念や数式がある場合は分かりやすく説明してください。
+3. 数式の表記：LaTeXなどのコード形式ではなく、人間が直感的に読みやすい形式（例: xの2乗は x²、ルートは √x、分数は (a/b) など）や、Unicode文字を積極的に使用して整形してください。
+4. 構成：箇条書きや見出しを使い、スマホやタブレットでも読みやすくしてください。`
+            : `あなたは非常に優秀な学習支援AIアシスタンスです。
+提供されたテキストを詳しく解説してください。
+
+【出力ルール】
+1. 要約・翻訳：文脈に合わせた自然な日本語で。
+2. 用語解説：重要な概念や数式を分かりやすく説明。
+3. 数式の表記：LaTeXなどのコード形式ではなく、人間が直感的に読みやすい形式（例: xの2乗は x²、ルートは √x、分数は (a/b) など）や、Unicode文字を積極的に使用して整形してください。
+4. 構成：箇条書きや見出しを使い、スマホやタブレットでも読みやすくしてください。
+
+抽出テキスト:
+"${cleanedText}"`;
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -551,17 +577,7 @@ export async function askAi(text: string) {
             body: JSON.stringify({
                 contents: [{
                     parts: [{
-                        text: `あなたは非常に優秀な学習支援AIアシスタントです。
-提供されたテキストを単に翻訳するだけでなく、以下の内容を含めて日本語で詳しく解説してください：
-
-1. 要約・翻訳（自然な日本語で）
-2. 重要な用語や概念の解説
-3. 文脈に基づいた補足情報や重要ポイント
-
-回答は読みやすく、学習の助けになるように構成してください。
-
-抽出テキスト:
-"${cleanedText}"`
+                        text: promptText
                     }]
                 }]
             })
