@@ -537,7 +537,7 @@ export async function askAi(text: string) {
     }
 
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
 
         const response = await fetch(url, {
             method: 'POST',
@@ -564,9 +564,16 @@ export async function askAi(text: string) {
         })
 
         if (!response.ok) {
-            const errorData = await response.json()
-            console.error("Gemini API error:", errorData)
-            return "AIとの通信中にエラーが発生しました。"
+            const status = response.status;
+            let errorDetail = "";
+            try {
+                const errorData = await response.json();
+                errorDetail = JSON.stringify(errorData);
+                console.error("Gemini API error:", errorData);
+            } catch (e) {
+                errorDetail = await response.text();
+            }
+            return `AIエラー (${status}): ${errorDetail.substring(0, 100)}`;
         }
 
         const data = await response.json()
@@ -574,9 +581,9 @@ export async function askAi(text: string) {
             return data.candidates[0].content.parts[0].text
         }
 
-        return "AIから有効な回答が得られませんでした。"
+        return "AIから有効な回答が得られませんでした。形式が異なっています。"
     } catch (error) {
         console.error("AI connection error:", error)
-        return "AIサービスに接続できませんでした。"
+        return `AI接続エラー: ${error instanceof Error ? error.message : String(error)}`
     }
 }
