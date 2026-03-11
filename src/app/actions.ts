@@ -528,17 +528,14 @@ export async function translateText(text: string) {
     }
 }
 
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
+
 export async function askAi(text: string) {
     const cleanedText = cleanPdfText(text)
     if (!cleanedText || cleanedText.length === 0) return ""
 
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
-        return "AI API Keyが設定されていません。.envファイルにGoogle Gemini API Keyを設定してください。"
-    }
-
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        // 現在利用可能な最新の高速モデル gemini-2.0-flash を使用します
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `あなたは非常に優秀な学習支援AIアシスタントです。
@@ -554,8 +551,7 @@ export async function askAi(text: string) {
 "${cleanedText}"`;
 
         const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
+        return result.response.text();
     } catch (error) {
         console.error("AI Assistant Error:", error);
         return `AIエラー: ${error instanceof Error ? error.message : String(error)}`;
