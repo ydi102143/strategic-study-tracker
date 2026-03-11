@@ -28,7 +28,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
     // Handwriting tools state
     const [isPencilMode, setIsPencilMode] = useState(false)
-    const [activeTool, setActiveTool] = useState<'pen' | 'eraser' | 'translate'>('pen')
+    const [activeTool, setActiveTool] = useState<'pen' | 'eraser' | 'ai_assistant'>('pen')
     const [activeColor, setActiveColor] = useState('#FF3B30')
     const [lineWidth, setLineWidth] = useState(2)
     const [initialAnnotations, setInitialAnnotations] = useState<any[]>([])
@@ -276,7 +276,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
             </div>
 
             {/* 2. Floating Pencil Toolbar - Only visible during pencil/eraser use */}
-            {isPencilMode && activeTool !== 'translate' && (
+            {isPencilMode && activeTool !== 'ai_assistant' && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-surface-2/90 backdrop-blur-xl p-1.5 rounded-3xl border border-white/10 z-[500] shadow-2xl scale-110">
                     <button
                         onClick={() => setIsPencilMode(false)}
@@ -403,17 +403,20 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                     </button>
                     <button
                         onClick={() => { setIsPencilMode(true); setActiveTool('pen') }}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isPencilMode && activeTool !== 'translate' ? 'bg-white text-black shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isPencilMode && activeTool !== 'ai_assistant' ? 'bg-white text-black shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
                     >
                         <Edit3 size={16} strokeWidth={3} />
                         <span className="hidden sm:inline">Pencil</span>
                     </button>
                     <button
-                        onClick={() => { setIsPencilMode(true); setActiveTool('translate') }}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isPencilMode && activeTool === 'translate' ? 'bg-white text-black shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
+                        onClick={() => { setIsPencilMode(true); setActiveTool('ai_assistant') }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isPencilMode && activeTool === 'ai_assistant' ? 'bg-white text-black shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
                     >
-                        <Languages size={16} strokeWidth={3} className={isPencilMode && activeTool === 'translate' ? 'text-blue-500' : ''} />
-                        <span className="hidden sm:inline">AI Assistant</span>
+                        <div className="relative">
+                            <Languages size={16} strokeWidth={3} className={isPencilMode && activeTool === 'ai_assistant' ? 'text-blue-500' : ''} />
+                            <span className="absolute -top-1 -right-1 text-[8px] font-black text-blue-400 bg-black rounded-full px-0.5">AI</span>
+                        </div>
+                        <span className="inline">AI Assistant</span>
                     </button>
                 </div>
 

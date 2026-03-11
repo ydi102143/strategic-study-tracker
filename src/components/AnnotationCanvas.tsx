@@ -20,7 +20,7 @@ interface Props {
     pageNumber: number
     initialAnnotations?: any[]
     isActive: boolean
-    mode: 'pen' | 'eraser' | 'translate'
+    mode: 'pen' | 'eraser' | 'ai_assistant'
     color: string
     lineWidth: number
     onTranslate?: (boundingBox: { left: number, top: number, right: number, bottom: number }) => void
@@ -191,7 +191,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 if (mode === 'eraser') {
                     // 移動中も連続して消去判定を行う（ブラシ消しゴム）
                     eraseAt(x, y)
-                } else if (mode === 'translate') {
+                } else if (mode === 'ai_assistant') {
                     // 翻訳モード（なげなわ）の描画
                     const last = currentPointsRef.current[currentPointsRef.current.length - 1]
                     ctx.strokeStyle = '#007AFF'
@@ -234,7 +234,7 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                 return
             }
 
-            if (mode === 'translate') {
+            if (mode === 'ai_assistant') {
                 // なげなわ終了：範囲を計算して翻訳リクエストを送る
                 if (currentPointsRef.current.length > 5 && onTranslate) {
                     const l = Math.min(...currentPointsRef.current.map(p => p.x))
