@@ -441,13 +441,13 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
             {/* Translation Result UI */}
             {(isTranslating || translationResult || pendingText) && (
-                <div className="fixed inset-0 z-[700] flex items-center justify-center p-4 pointer-events-none">
+                <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none" style={{ zIndex: 9999 }}>
                     <div
-                        className="relative w-full max-w-2xl bg-[#1C1C1E] border border-white/10 rounded-[32px] shadow-2xl pointer-events-auto overflow-hidden animate-in fade-in zoom-in-95 duration-300 transform-gpu"
-                        style={{ height: '75vh', maxHeight: '900px', transform: 'translateZ(0)' }}
+                        className="w-full max-w-2xl bg-[#1C1C1E] border border-white/10 rounded-[32px] shadow-2xl pointer-events-auto overflow-hidden animate-in fade-in zoom-in-95 duration-300"
+                        style={{ height: '70vh', maxHeight: '800px' }}
                     >
                         {/* Header - Absolute Top */}
-                        <div className="absolute top-0 left-0 right-0 h-[76px] px-6 border-b border-white/10 flex justify-between items-center bg-[#2C2C2E] z-20">
+                        <div className="h-[76px] px-6 border-b border-white/10 flex justify-between items-center bg-[#2C2C2E] z-20">
                             <div className="flex items-center gap-2 text-white/40">
                                 <Languages size={18} className="text-blue-400" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">AI Assistant</span>
@@ -459,8 +459,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
                         {/* Content Area - Absolute Bounded */}
                         <div
-                            className="absolute top-[76px] bottom-0 left-0 right-0 overflow-y-auto bg-[#1C1C1E] z-10"
-                            style={{ WebkitOverflowScrolling: 'touch' }}
+                            className="w-full bg-[#1C1C1E]"
+                            style={{ height: 'calc(100% - 76px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
                         >
                             <div className="p-6 md:p-8 space-y-8 pb-12">
                                 {isTranslating ? (
