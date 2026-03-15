@@ -191,12 +191,43 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                     const tx = item.transform[4]
                     const ty = item.transform[5]
 
-                    const [vx, vy] = viewport.convertToViewportPoint(tx, ty)
-                    const nx = vx / viewport.width
-                    const ny = vy / viewport.height
+                    // convertToViewportPoint handles transformation matrix
+                    const [vx1, vy1] = viewport.convertToViewportPoint(tx, ty)
+                    const [vx2, vy2] = viewport.convertToViewportPoint(tx + item.width, ty + (item.height || Math.abs(item.transform[3])))
 
-                    if (nx >= boundingBox.left && nx <= boundingBox.right &&
-                        ny >= boundingBox.top && ny <= boundingBox.bottom) {
+                    const nx1 = vx1 / viewport.width
+                    const nx2 = vx2 / viewport.width
+                    const ny1 = vy1 / viewport.height
+                    const ny2 = vy2 / viewport.height
+
+                    const itemLeft = Math.min(nx1, nx2)
+                    const itemRight = Math.max(nx1, nx2)
+                    // Give a small vertical margin as baselines might be slightly outside
+                    const yMargin = 0.01
+                    const itemTop = Math.min(ny1, ny2) - yMargin
+                    const itemBottom = Math.max(ny1, ny2) + yMargin
+
+                    const overlapLeft = Math.max(itemLeft, boundingBox.left)
+                    const overlapRight = Math.min(itemRight, boundingBox.right)
+                    const overlapTop = Math.max(itemTop, boundingBox.top)
+                    const overlapBottom = Math.min(itemBottom, boundingBox.bottom)
+
+                    if (overlapLeft <= overlapRight && overlapTop <= overlapBottom) {
+                        const itemWidth = itemRight - itemLeft
+                        if (itemWidth > 0 && item.str.length > 0) {
+                            // Calculate which part of the string is inside the box horizontally
+                            const startRatio = (overlapLeft - itemLeft) / itemWidth
+                            const endRatio = (overlapRight - itemLeft) / itemWidth
+
+                            const startIndex = Math.floor(startRatio * item.str.length)
+                            const endIndex = Math.ceil(endRatio * item.str.length)
+
+                            // Add a small buffer of 1 character to avoid cutting letters completely
+                            const safeStartIndex = Math.max(0, startIndex - 1)
+                            const safeEndIndex = Math.min(item.str.length, endIndex + 1)
+
+                            return item.str.substring(safeStartIndex, safeEndIndex)
+                        }
                         return item.str
                     }
                     return null
@@ -378,7 +409,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
             {/* Translation Result UI */}
             {(isTranslating || translationResult || pendingText) && (
-                <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] max-w-lg bg-surface-2/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl z-[700] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="fixed top-12 md:top-24 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl max-h-[85vh] flex flex-col bg-surface-2/95 backdrop-blur-3xl border border-white/20 rounded-[32px] shadow-[0_0_80px_rgba(0,0,0,0.8)] z-[700] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-2 text-white/40">
                             <Languages size={18} className="text-blue-400" />
@@ -390,43 +421,43 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                     </div>
 
                     {isTranslating ? (
-                        <div className="py-8 flex flex-col items-center gap-4">
-                            <div className="w-8 h-8 border-2 border-white/5 border-t-blue-500 rounded-full animate-spin" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-white/40">AI is thinking...</p>
+                        <div className="py-12 flex flex-col items-center gap-6">
+                            <div className="w-10 h-10 border-4 border-white/10 border-t-blue-500 rounded-full animate-spin" />
+                            <p className="text-xs font-black uppercase tracking-widest text-white/50">AI is thinking...</p>
                         </div>
                     ) : pendingText ? (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-white/40">対象テキストの確認</label>
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 max-h-[150px] overflow-auto">
-                                    <p className="text-xs text-white/50 leading-relaxed italic">"{pendingText}"</p>
+                        <div className="space-y-6 overflow-y-auto pr-2 pb-2">
+                            <div className="space-y-3">
+                                <label className="text-xs font-black uppercase tracking-widest text-white/50">対象テキスト</label>
+                                <div className="p-5 bg-black/40 rounded-2xl border border-white/10">
+                                    <p className="text-sm text-white/80 leading-relaxed italic">{pendingText}</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <button
-                                    onClick={() => submitAiRequest("この文章を自然な日本語に翻訳してください。")}
-                                    className="flex flex-col items-center gap-2 p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+                                    onClick={() => submitAiRequest("この文章の内容を自然な日本語に翻訳してください。")}
+                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-2xl transition-all group"
                                 >
-                                    <Languages size={24} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                                    <span className="text-sm font-bold text-white">翻訳する</span>
+                                    <Languages size={28} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                                    <span className="text-base font-bold text-blue-100">翻訳する</span>
                                 </button>
                                 <button
-                                    onClick={() => submitAiRequest("この文章の内容を初心者にも分かりやすく詳しく解説してください。重要な用語があればそれも説明してください。")}
-                                    className="flex flex-col items-center gap-2 p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+                                    onClick={() => submitAiRequest("このテキストの内容を初心者にも分かりやすく、要点を中心に簡潔に解説してください。概要と重要な用語の意味も含めてください。")}
+                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-2xl transition-all group"
                                 >
-                                    <Edit3 size={24} className="text-purple-400 group-hover:scale-110 transition-transform" />
-                                    <span className="text-sm font-bold text-white">解説する</span>
+                                    <Edit3 size={28} className="text-purple-400 group-hover:scale-110 transition-transform" />
+                                    <span className="text-base font-bold text-purple-100">解説する</span>
                                 </button>
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                <p className="text-xs text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
+                        <div className="space-y-6 overflow-y-auto pr-2 flex-1 scrollbar-hide flex flex-col">
+                            <div className="p-5 bg-black/40 rounded-2xl border border-white/10 shrink-0">
+                                <p className="text-sm text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
                             </div>
-                            <div className="p-5 bg-white text-black rounded-2xl shadow-xl overflow-auto max-h-[40vh]">
-                                <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap">{translationResult?.translated}</p>
+                            <div className="p-6 bg-white text-black rounded-3xl shadow-xl flex-1 overflow-y-auto border border-white/10 text-base">
+                                <p className="font-medium leading-[1.8] whitespace-pre-wrap">{translationResult?.translated}</p>
                             </div>
                         </div>
                     )}
