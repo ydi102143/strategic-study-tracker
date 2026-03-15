@@ -587,7 +587,15 @@ ${userPrompt}
 
         const data = await response.json()
         if (data && data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-            return data.candidates[0].content.parts[0].text
+            let resultText = data.candidates[0].content.parts[0].text;
+            // 完全にMarkdownとLaTeX記号をフロントエンドの邪魔にならないように除去・置換する
+            resultText = resultText.replace(/\*\*/g, ''); // 太字
+            resultText = resultText.replace(/\*/g, '');   // イタリック/リスト記号は一旦除去 (文脈次第だが基本は消す)
+            resultText = resultText.replace(/###/g, '■'); // 見出し
+            resultText = resultText.replace(/##/g, '■');
+            resultText = resultText.replace(/#/g, '■');
+            resultText = resultText.replace(/\$/g, '');   // LaTeX $
+            return resultText;
         }
 
         return "AIから有効な回答が得られませんでした。"
