@@ -544,7 +544,7 @@ export async function askAi(text: string, userPrompt?: string) {
         const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`
 
         const promptText = userPrompt
-            ? `提供されたテキストに対し、以下の指示に従って【極めて簡潔に】回答してください。
+            ? `提供されたテキストに対し、以下の指示に従って回答してください。
 
 【ユーザーの追加指示】
 ${userPrompt}

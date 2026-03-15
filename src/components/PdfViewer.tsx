@@ -174,7 +174,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     const goToNextPage = () => setPageNumber(p => Math.min(numPages, p + 1))
     const handleResetScale = () => setScale(1.0)
 
-    const handleAiAssistant = async (boundingBox: { left: number, top: number, right: number, bottom: number }) => {
+    const handleAiAssistant = async (boundingBox: { left: number, top: number, right: number, bottom: number }, points?: { x: number, y: number }[]) => {
         if (!pdfPageRef.current) return
 
         setIsTranslating(true)
@@ -188,6 +188,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
             const extractedText = textContent.items
                 .map((item: any) => {
+                    if (!item.str || item.str.trim().length === 0) return null
+
                     const tx = item.transform[4]
                     const ty = item.transform[5]
 
@@ -214,6 +216,36 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
                     if (overlapLeft <= overlapRight && overlapTop <= overlapBottom) {
                         const itemWidth = itemRight - itemLeft
+
+                        // Polygon-based precise character filtering
+                        if (points && points.length > 2 && itemWidth > 0 && item.str.length > 0) {
+                            let extractedChars = ""
+                            for (let i = 0; i < item.str.length; i++) {
+                                // Interpolate the center X of the character
+                                const ratio = (i + 0.5) / item.str.length
+                                const charX = itemLeft + ratio * itemWidth
+                                // Use the vertical center of the text item
+                                const charY = (itemTop + itemBottom) / 2
+
+                                // Point-in-polygon ray-casting algorithm
+                                let inside = false
+                                for (let j = 0, k = points.length - 1; j < points.length; k = j++) {
+                                    const xi = points[j].x, yi = points[j].y
+                                    const xj = points[k].x, yj = points[k].y
+
+                                    const intersect = ((yi > charY) !== (yj > charY)) &&
+                                        (charX < (xj - xi) * (charY - yi) / (yj - yi) + xi)
+                                    if (intersect) inside = !inside
+                                }
+
+                                if (inside) {
+                                    extractedChars += item.str[i]
+                                }
+                            }
+                            return extractedChars.length > 0 ? extractedChars : null
+                        }
+
+                        // Fallback to bounding-box overlap ratio if no valid polygon points
                         if (itemWidth > 0 && item.str.length > 0) {
                             // Calculate which part of the string is inside the box horizontally
                             const startRatio = (overlapLeft - itemLeft) / itemWidth
@@ -452,11 +484,11 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-6 overflow-y-auto pr-2 flex-1 scrollbar-hide flex flex-col">
-                            <div className="p-5 bg-black/40 rounded-2xl border border-white/10 shrink-0">
+                        <div className="space-y-4 overflow-hidden pr-2 flex-1 flex flex-col min-h-0">
+                            <div className="p-5 bg-black/40 rounded-2xl border border-white/10 shrink-0 max-h-[30vh] overflow-y-auto scrollbar-hide">
                                 <p className="text-sm text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
                             </div>
-                            <div className="p-6 bg-white text-black rounded-3xl shadow-xl flex-1 overflow-y-auto border border-white/10 text-base">
+                            <div className="p-6 bg-white text-black rounded-3xl shadow-xl flex-1 overflow-y-auto border border-white/10 text-base min-h-[100px]">
                                 <p className="font-medium leading-[1.8] whitespace-pre-wrap">{translationResult?.translated}</p>
                             </div>
                         </div>

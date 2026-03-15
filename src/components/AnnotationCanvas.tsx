@@ -23,7 +23,7 @@ interface Props {
     mode: 'pen' | 'eraser' | 'ai_assistant'
     color: string
     lineWidth: number
-    onTranslate?: (boundingBox: { left: number, top: number, right: number, bottom: number }) => void
+    onTranslate?: (boundingBox: { left: number, top: number, right: number, bottom: number }, points?: Point[]) => void
 }
 
 export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = [], isActive, mode, color, lineWidth, onTranslate }: Props) {
@@ -241,7 +241,8 @@ export function AnnotationCanvas({ materialId, pageNumber, initialAnnotations = 
                     const t = Math.min(...currentPointsRef.current.map(p => p.y))
                     const r = Math.max(...currentPointsRef.current.map(p => p.x))
                     const b = Math.max(...currentPointsRef.current.map(p => p.y))
-                    onTranslate({ left: l, top: t, right: r, bottom: b })
+                    // Pass a copy of the points so it isn't mutated
+                    onTranslate({ left: l, top: t, right: r, bottom: b }, [...currentPointsRef.current])
                 }
                 updateBuffer() // 点線を消去
                 currentPointsRef.current = []
