@@ -441,8 +441,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
             {/* Translation Result UI */}
             {(isTranslating || translationResult || pendingText) && (
-                <div className="fixed top-12 md:top-24 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl max-h-[85vh] flex flex-col overflow-hidden bg-surface-2/95 backdrop-blur-3xl border border-white/20 rounded-[32px] shadow-[0_0_80px_rgba(0,0,0,0.8)] z-[700] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="fixed top-12 md:top-20 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl max-h-[70vh] flex flex-col overflow-hidden bg-surface-2/95 backdrop-blur-3xl border border-white/20 rounded-[32px] shadow-[0_0_80px_rgba(0,0,0,0.8)] z-[700] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex justify-between items-start mb-4 shrink-0">
                         <div className="flex items-center gap-2 text-white/40">
                             <Languages size={18} className="text-blue-400" />
                             <span className="text-[10px] font-black uppercase tracking-widest">AI Assistant</span>
@@ -484,11 +484,11 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col flex-1 min-h-0 space-y-4">
-                            <div className="p-4 bg-black/40 rounded-2xl border border-white/10 shrink-0 max-h-[25vh] overflow-y-auto scrollbar-hide">
+                        <div className="flex flex-col flex-1 min-h-0 space-y-4 overflow-hidden">
+                            <div className="p-4 bg-black/40 rounded-2xl border border-white/10 shrink-0 max-h-[15vh] overflow-y-auto scrollbar-hide">
                                 <p className="text-sm text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
                             </div>
-                            <div className="p-6 bg-white text-black rounded-3xl shadow-xl flex-1 overflow-y-auto border border-white/10 text-base">
+                            <div className="p-6 bg-white text-black rounded-3xl shadow-xl flex-1 min-h-0 overflow-y-auto border border-white/10 text-base">
                                 <p className="font-medium leading-[1.8] whitespace-pre-wrap">{translationResult?.translated}</p>
                             </div>
                         </div>
