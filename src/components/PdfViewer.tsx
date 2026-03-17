@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { updateProgress, getAnnotations, translateText, askAi } from '@/app/actions'
 import { useRef, useMemo, useCallback } from 'react'
 import { AnnotationCanvas } from './AnnotationCanvas'
+import { ReasoningVisualization } from './ReasoningVisualization'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -472,9 +473,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                         >
                             <div className="p-6 md:p-8 space-y-8 pb-32">
                                 {isTranslating ? (
-                                    <div className="flex flex-col items-center justify-center py-20 gap-6">
-                                        <div className="w-10 h-10 border-4 border-white/10 border-t-blue-500 rounded-full animate-spin" />
-                                        <p className="text-xs font-black uppercase tracking-widest text-white/50">AI is thinking...</p>
+                                    <div className="flex flex-col items-center justify-center py-10 w-full">
+                                        <ReasoningVisualization />
                                     </div>
                                 ) : pendingText ? (
                                     <>
