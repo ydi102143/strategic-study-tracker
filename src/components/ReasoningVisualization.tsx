@@ -10,6 +10,25 @@ export function ReasoningVisualization() {
     )
     const [fade, setFade] = useState(true)
 
+    const formatText = (text: string) => {
+        return text
+            .replace(/\$/g, '')
+            .replace(/\\sum/g, '∑')
+            .replace(/\\nabla/g, '∇')
+            .replace(/\\sigma/g, 'σ')
+            .replace(/\\gamma/g, 'γ')
+            .replace(/\\pi/g, 'π')
+            .replace(/\\theta/g, 'θ')
+            .replace(/\\dim/g, 'dim')
+            .replace(/\\ker/g, 'ker')
+            .replace(/\\text\{([^}]+)\}/g, '$1')
+            .replace(/\^T/g, 'ᵀ')
+            .replace(/\^2/g, '²')
+            .replace(/\^{-1}/g, '⁻¹')
+            .replace(/_i/g, 'ᵢ')
+            .replace(/_{([^}]+)}/g, '$1')
+    }
+
     useEffect(() => {
         const interval = setInterval(() => {
             setFade(false)
@@ -59,7 +78,7 @@ export function ReasoningVisualization() {
                         <div className="space-y-1.5">
                             <span className="text-[9px] font-black uppercase tracking-widest text-white/30">Theory</span>
                             <p className="text-sm text-white/70 leading-relaxed font-medium">
-                                {currentItem.description}
+                                {formatText(currentItem.description)}
                             </p>
                         </div>
                         
@@ -68,7 +87,7 @@ export function ReasoningVisualization() {
                         <div className="space-y-1.5">
                             <span className="text-[9px] font-black uppercase tracking-widest text-blue-400/50">AI Application Scene</span>
                             <p className="text-sm text-white/90 leading-relaxed font-bold italic">
-                                {currentItem.scene}
+                                {formatText(currentItem.scene)}
                             </p>
                         </div>
                     </div>
