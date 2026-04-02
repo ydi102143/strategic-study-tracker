@@ -554,16 +554,16 @@ ${userPrompt}
 
 【出力ルール】
 1. 追加指示が「翻訳」に関するものである場合、結果の日本語への翻訳文のみを出力し、挨拶や解説などは一切含めないでください。
-2. 数式や記号にLaTeX（$ や \\、$$ など）は【絶対に】使用せず、すべてプレーンなUnicode文字（x², √x, a/b 等）に変換してください。
-3. 出力は【完全なプレーンテキスト】としてください。Markdown記法（** や *、# など）は一切使用せず、強調や見出しは改行や記号（・、「」など）で表現してください。`
+2. 数式や記号には LaTeX（$ や $$ など）を積極的に使用して、正しく構造化してください。
+3. 出力は Markdown 形式（太字、見出し、リスト等）を適切に使用して、読みやすくレイアウトしてください。`
             : `以下のテキストを日本語で解説してください。
 
 【対象テキスト】
 "${cleanedText}"
 
 【出力ルール】
-1. 数式や記号にLaTeX（$ や \\、$$ など）は【絶対に】使用せず、すべてプレーンなUnicode文字（x², √x, a/b 等）に変換してください。
-2. 出力は【完全なプレーンテキスト】としてください。Markdown記法（** や *、# など）は一切使用せず、強調や見出しは改行や記号（・、「」など）で表現してください。`;
+1. 数式や記号には LaTeX（$ や $$ など）を積極的に使用して、正しく構造化してください。
+2. 出力は Markdown 形式（太字、見出し、リスト等）を適切に使用して、読みやすくレイアウトしてください。`;
 
         const response = await fetch(url, {
             method: 'POST',
@@ -587,15 +587,7 @@ ${userPrompt}
 
         const data = await response.json()
         if (data && data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-            let resultText = data.candidates[0].content.parts[0].text;
-            // 完全にMarkdownとLaTeX記号をフロントエンドの邪魔にならないように除去・置換する
-            resultText = resultText.replace(/\*\*/g, ''); // 太字
-            resultText = resultText.replace(/\*/g, '');   // イタリック/リスト記号は一旦除去 (文脈次第だが基本は消す)
-            resultText = resultText.replace(/###/g, '■'); // 見出し
-            resultText = resultText.replace(/##/g, '■');
-            resultText = resultText.replace(/#/g, '■');
-            resultText = resultText.replace(/\$/g, '');   // LaTeX $
-            return resultText;
+            return data.candidates[0].content.parts[0].text;
         }
 
         return "AIから有効な回答が得られませんでした。"

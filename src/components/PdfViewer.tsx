@@ -10,6 +10,10 @@ import { AnnotationCanvas } from './AnnotationCanvas'
 import { ReasoningVisualization } from './ReasoningVisualization'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 
 // Web Workerの設定
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
@@ -508,7 +512,14 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                             <p className="text-sm text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
                                         </div>
                                         <div className="p-6 md:p-8 bg-white text-black rounded-3xl shadow-2xl border border-black/10 shrink-0">
-                                            <p className="font-medium leading-[2] text-[15px] whitespace-pre-wrap break-words text-black">{translationResult?.translated}</p>
+                                            <div className="prose prose-sm max-w-none text-black">
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkMath]}
+                                                    rehypePlugins={[rehypeKatex]}
+                                                >
+                                                    {translationResult?.translated || ''}
+                                                </ReactMarkdown>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
