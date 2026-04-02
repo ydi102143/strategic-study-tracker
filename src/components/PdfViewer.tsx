@@ -518,7 +518,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                                     rehypePlugins={[rehypeKatex]}
                                                 >
                                                     {(translationResult?.translated || '')
-                                                        .replace(/\\{1,2}\[|\\{1,2}\]/g, '$$')
+                                                        .replace(/\\n/g, '\n')
+                                                        .replace(/\\{1,2}\[|\\{1,2}\]/g, '$$$$')
                                                         .replace(/\\{1,2}\(|\\{1,2}\)/g, '$')
                                                     }
                                                 </ReactMarkdown>
