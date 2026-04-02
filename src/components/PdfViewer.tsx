@@ -48,6 +48,11 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     const pdfPageRef = useRef<any>(null)
     const [vh, setVh] = useState(0)
 
+    // AI History State
+    const [aiHistory, setAiHistory] = useState<{ id: number, original: string, translated: string }[]>([])
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+    const [historyCounter, setHistoryCounter] = useState(0)
+
     // Window Resize Handler - Maximize for iPad
     useEffect(() => {
         function handleResize() {
@@ -291,16 +296,27 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         if (!pendingText) return
 
         setIsTranslating(true)
+        const capturedText = pendingText
         try {
-            const aiResponse = await askAi(pendingText, prompt)
-            setTranslationResult({ original: pendingText, translated: aiResponse })
+            const aiResponse = await askAi(capturedText, prompt)
+            setTranslationResult({ original: capturedText, translated: aiResponse })
+            // 履歴に追加
+            setAiHistory(prev => [
+                { id: historyCounter, original: capturedText, translated: aiResponse },
+                ...prev
+            ])
+            setHistoryCounter(c => c + 1)
             setPendingText(null)
         } catch (error) {
             console.error("AI Request error:", error)
-            setTranslationResult({ original: pendingText, translated: "AIによる解析に失敗しました。" })
+            setTranslationResult({ original: capturedText, translated: "AIによる解析に失敗しました。" })
         } finally {
             setIsTranslating(false)
         }
+    }
+
+    const deleteHistoryItem = (id: number) => {
+        setAiHistory(prev => prev.filter(item => item.id !== id))
     }
 
     return (
@@ -483,7 +499,20 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 ) : pendingText ? (
                                     <>
                                         <div className="space-y-3 shrink-0">
-                                            <label className="text-xs font-black uppercase tracking-widest text-white/50">対象テキスト</label>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-black uppercase tracking-widest text-white/50">対象テキスト</label>
+                                                {/* 履歴ボタン - 小さめで邪魔にならないように */}
+                                                {aiHistory.length > 0 && (
+                                                    <button
+                                                        onClick={() => setIsHistoryOpen(true)}
+                                                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white/70 transition-all text-[10px] font-bold uppercase tracking-widest"
+                                                        title="過去の履歴を見る"
+                                                    >
+                                                        <span style={{ fontSize: '10px' }}>🕐</span>
+                                                        <span>履歴 {aiHistory.length}</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                             <div className="p-6 bg-black/40 rounded-2xl border border-white/10">
                                                 <p className="text-sm text-white/80 leading-relaxed italic">{pendingText}</p>
                                             </div>
@@ -533,6 +562,87 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 </div>
             )}
 
+            {/* AI History Popup */}
+            {isHistoryOpen && (
+                <div
+                    className="fixed inset-0 flex items-center justify-center p-4 md:p-10"
+                    style={{ zIndex: 10000 }}
+                    onClick={() => setIsHistoryOpen(false)}
+                >
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+                    <div
+                        className="relative w-full max-w-2xl bg-[#1C1C1E] border border-white/10 rounded-[28px] flex flex-col shadow-[0_0_120px_rgba(0,0,0,1)] overflow-hidden"
+                        style={{ maxHeight: '80vh' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Popup Header */}
+                        <div className="flex-none px-6 py-4 border-b border-white/10 bg-[#2C2C2E] flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">🕐</span>
+                                <span className="text-[11px] font-black uppercase tracking-widest text-white/60">AI 出力履歴</span>
+                                <span className="text-[10px] font-bold text-white/20 ml-1">{aiHistory.length}件</span>
+                            </div>
+                            {/* ✕ 閉じるボタン（独立） */}
+                            <button
+                                onClick={() => setIsHistoryOpen(false)}
+                                className="p-2 -mr-2 rounded-full text-white/30 hover:text-white hover:bg-white/10 transition-all"
+                                title="閉じる"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Popup Content - Scrollable */}
+                        <div className="overflow-y-auto custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+                            {aiHistory.length === 0 ? (
+                                <div className="p-10 text-center text-white/20 text-sm">履歴はありません</div>
+                            ) : (
+                                <div className="p-4 space-y-3">
+                                    {aiHistory.map((item, index) => (
+                                        <div
+                                            key={item.id}
+                                            className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden"
+                                        >
+                                            {/* 質問テキスト */}
+                                            <div className="px-4 py-3 bg-black/30 flex items-start justify-between gap-3">
+                                                <p className="text-[11px] text-white/40 italic leading-relaxed flex-1 line-clamp-2">
+                                                    &ldquo;{item.original}&rdquo;
+                                                </p>
+                                                {/* この履歴を削除するボタン */}
+                                                <button
+                                                    onClick={() => deleteHistoryItem(item.id)}
+                                                    className="flex-none flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400/60 hover:text-red-400 transition-all text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
+                                                    title="この履歴を削除"
+                                                >
+                                                    <X size={10} strokeWidth={3} />
+                                                    削除
+                                                </button>
+                                            </div>
+                                            {/* AI出力 */}
+                                            <div className="px-4 py-4 bg-white text-black rounded-b-2xl">
+                                                <div className="prose prose-sm max-w-none text-black text-[13px]">
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[remarkMath]}
+                                                        rehypePlugins={[rehypeKatex]}
+                                                    >
+                                                        {(item.translated || '')
+                                                            .replace(/\\n/g, '\n')
+                                                            .replace(/\\{1,2}\[|\\{1,2}\]/g, '$$$$')
+                                                            .replace(/\\{1,2}\(|\\{1,2}\)/g, '$')
+                                                        }
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* iPad Nav Controls - Always visible */}
             <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-surface-2/90 backdrop-blur-2xl border border-white/10 px-6 py-3 rounded-[32px] shadow-2xl z-[600] min-w-[320px] md:min-w-[700px] transition-all duration-500`}>
