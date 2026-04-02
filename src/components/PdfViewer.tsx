@@ -517,7 +517,12 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                                     remarkPlugins={[remarkMath]}
                                                     rehypePlugins={[rehypeKatex]}
                                                 >
-                                                    {translationResult?.translated || ''}
+                                                    {(translationResult?.translated || '')
+                                                        .replace(/\\\( /g, '$').replace(/ \\\)/g, '$') // スペースありのパターン
+                                                        .replace(/\\\(/g, '$').replace(/\\\)/g, '$')     // 通常のインライン
+                                                        .replace(/\\\[ /g, '$$').replace(/ \\\]/g, '$$') // スペースありのブロック
+                                                        .replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')   // 通常のブロック
+                                                    }
                                                 </ReactMarkdown>
                                             </div>
                                         </div>
