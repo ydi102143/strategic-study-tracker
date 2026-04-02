@@ -498,7 +498,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                                 <span className="text-base font-bold text-blue-100">翻訳する</span>
                                             </button>
                                             <button
-                                                onClick={() => submitAiRequest("このテキストの内容を中級者向けに簡潔に解説して。")}
+                                                onClick={() => submitAiRequest("このテキストの内容を解説して。")}
                                                 className="flex flex-col items-center justify-center gap-3 p-6 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-2xl transition-all group"
                                             >
                                                 <Edit3 size={28} className="text-purple-400 group-hover:scale-110 transition-transform" />
@@ -518,10 +518,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                                     rehypePlugins={[rehypeKatex]}
                                                 >
                                                     {(translationResult?.translated || '')
-                                                        .replace(/\\\( /g, '$').replace(/ \\\)/g, '$') // スペースありのパターン
-                                                        .replace(/\\\(/g, '$').replace(/\\\)/g, '$')     // 通常のインライン
-                                                        .replace(/\\\[ /g, '$$').replace(/ \\\]/g, '$$') // スペースありのブロック
-                                                        .replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')   // 通常のブロック
+                                                        .replace(/\\{1,2}\[|\\{1,2}\]/g, '$$')
+                                                        .replace(/\\{1,2}\(|\\{1,2}\)/g, '$')
                                                     }
                                                 </ReactMarkdown>
                                             </div>
