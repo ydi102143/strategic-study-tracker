@@ -589,7 +589,21 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 </div>
             )}
 
+            {/* 常時表示の履歴フローティングボタン - テキストを囲まなくてもアクセス可能 */}
+            {aiHistory.length > 0 && !isHistoryOpen && (
+                <button
+                    onClick={() => setIsHistoryOpen(true)}
+                    className="fixed right-4 bottom-28 flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-black/60 backdrop-blur-md border border-white/15 text-white/50 hover:text-white hover:bg-black/80 hover:border-white/30 transition-all shadow-xl text-[11px] font-bold z-[700]"
+                    style={{ zIndex: 700 }}
+                    title="AIの過去の出力を見る"
+                >
+                    <span style={{ fontSize: '12px' }}>🕐</span>
+                    <span>履歴 {aiHistory.length}</span>
+                </button>
+            )}
+
             {/* AI History Popup */}
+
             {isHistoryOpen && (
                 <div
                     className="fixed inset-0 flex items-center justify-center p-4 md:p-10"
