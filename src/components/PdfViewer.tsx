@@ -478,9 +478,23 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 <Languages size={18} className="text-blue-400" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">AI Assistant</span>
                             </div>
-                            <button onClick={() => { setTranslationResult(null); setPendingText(null) }} className="p-3 -mr-3 text-white/20 hover:text-white transition rounded-full">
-                                <X size={24} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {/* 履歴ボタン - ヘッダーに常時表示 */}
+                                {aiHistory.length > 0 && (
+                                    <button
+                                        onClick={() => setIsHistoryOpen(true)}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white/70 transition-all text-[10px] font-bold uppercase tracking-widest"
+                                        title="過去の履歴を見る"
+                                    >
+                                        <span style={{ fontSize: '11px' }}>🕐</span>
+                                        <span>履歴 {aiHistory.length}</span>
+                                    </button>
+                                )}
+                                {/* 閉じるボタン */}
+                                <button onClick={() => { setTranslationResult(null); setPendingText(null) }} className="p-3 -mr-3 text-white/20 hover:text-white transition rounded-full">
+                                    <X size={24} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Content Area - Absolute positioning to force scroll container behavior */}
@@ -538,7 +552,20 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 ) : (
                                     <div className="flex flex-col gap-6">
                                         <div className="p-5 bg-black/40 rounded-2xl border border-white/10 shrink-0">
-                                            <p className="text-sm text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
+                                            <div className="flex items-start justify-between gap-3 mb-2">
+                                                <p className="text-sm text-white/50 leading-relaxed italic flex-1">"{translationResult?.original}"</p>
+                                                {/* 履歴ボタン - 結果表示中も参照できる */}
+                                                {aiHistory.length > 1 && (
+                                                    <button
+                                                        onClick={() => setIsHistoryOpen(true)}
+                                                        className="flex-none flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white/70 transition-all text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
+                                                        title="過去の履歴を見る"
+                                                    >
+                                                        <span style={{ fontSize: '10px' }}>🕐</span>
+                                                        <span>履歴 {aiHistory.length}</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="p-6 md:p-8 bg-white text-black rounded-3xl shadow-2xl border border-black/10 shrink-0">
                                             <div className="prose prose-sm max-w-none text-black">
