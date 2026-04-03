@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { ChevronLeft, ChevronRight, Edit3, Eraser, ArrowLeft, ZoomIn, ZoomOut, RefreshCw, X, Hand, Languages } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { updateProgress, getAnnotations, translateText, askAi } from '@/app/actions'
+import { updateProgress, getAnnotations, translateText, askAi, saveAiHistory, getAiHistory, deleteAiHistory } from '@/app/actions'
 import { useRef, useMemo, useCallback } from 'react'
 import { AnnotationCanvas } from './AnnotationCanvas'
 import { ReasoningVisualization } from './ReasoningVisualization'
@@ -48,9 +48,9 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     const pdfPageRef = useRef<any>(null)
     const [vh, setVh] = useState(0)
 
-    // AI History State
+    // AI History State (Supabase-backed)
     type AiHistoryItem = {
-        id: number
+        id: string          // uuid from DB
         original: string
         translated: string
         pageNumber: number
@@ -58,7 +58,6 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     }
     const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([])
     const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-    const [historyCounter, setHistoryCounter] = useState(0)
     const [pendingBoundingBox, setPendingBoundingBox] = useState<{ left: number, top: number, right: number, bottom: number } | null>(null)
 
     // Window Resize Handler - Maximize for iPad
@@ -72,6 +71,21 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         window.addEventListener('resize', handleResize)
         return () => window.removeEventListener('resize', handleResize)
     }, [])
+
+    // Load AI history from Supabase on mount
+    useEffect(() => {
+        async function loadHistory() {
+            const rows = await getAiHistory(materialId)
+            setAiHistory(rows.map((r: any) => ({
+                id: r.id,
+                original: r.original_text,
+                translated: r.translated_text,
+                pageNumber: r.page_number,
+                boundingBox: r.bounding_box ?? { left: 0, top: 0, right: 1, bottom: 0.1 },
+            })))
+        }
+        loadHistory()
+    }, [materialId])
 
     // Load annotations
     useEffect(() => {
@@ -309,13 +323,27 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         try {
             const aiResponse = await askAi(capturedText, prompt)
             setTranslationResult({ original: capturedText, translated: aiResponse })
-            // 履歴に追加（ページ番号＋位置情報付き）
+            // Supabase に保存してから履歴を更新
             const bbox = pendingBoundingBox || { left: 0, top: 0, right: 1, bottom: 0.1 }
-            setAiHistory(prev => [
-                { id: historyCounter, original: capturedText, translated: aiResponse, pageNumber, boundingBox: bbox },
-                ...prev
-            ])
-            setHistoryCounter(c => c + 1)
+            try {
+                const saved = await saveAiHistory({
+                    material_id: materialId,
+                    page_number: pageNumber,
+                    original_text: capturedText,
+                    translated_text: aiResponse,
+                    bounding_box: bbox,
+                })
+                setAiHistory(prev => [
+                    { id: saved.id, original: capturedText, translated: aiResponse, pageNumber, boundingBox: bbox },
+                    ...prev
+                ])
+            } catch {
+                // 保存失敗でもローカルには表示
+                setAiHistory(prev => [
+                    { id: crypto.randomUUID(), original: capturedText, translated: aiResponse, pageNumber, boundingBox: bbox },
+                    ...prev
+                ])
+            }
             setPendingText(null)
         } catch (error) {
             console.error("AI Request error:", error)
@@ -325,8 +353,9 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         }
     }
 
-    const deleteHistoryItem = (id: number) => {
+    const deleteHistoryItem = async (id: string) => {
         setAiHistory(prev => prev.filter(item => item.id !== id))
+        try { await deleteAiHistory(id) } catch { /* ignore */ }
     }
 
     return (
@@ -511,23 +540,28 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 <span className="text-[10px] font-black uppercase tracking-widest">AI Assistant</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                {/* 履歴ボタン - ヘッダーに常時表示 */}
-                                {aiHistory.length > 0 && (
-                                    <button
-                                        onClick={() => setIsHistoryOpen(true)}
-                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white/70 transition-all text-[10px] font-bold uppercase tracking-widest"
-                                        title="過去の履歴を見る"
-                                    >
-                                        <span style={{ fontSize: '11px' }}>🕐</span>
-                                        <span>履歴 {aiHistory.length}</span>
-                                    </button>
-                                )}
                                 {/* 閉じるボタン */}
                                 <button onClick={() => { setTranslationResult(null); setPendingText(null) }} className="p-3 -mr-3 text-white/20 hover:text-white transition rounded-full">
                                     <X size={24} />
                                 </button>
                             </div>
                         </div>
+
+                        {/* 履歴アクセスバー - 入力テキスト直上に常時表示（タッチ対応） */}
+                        {aiHistory.length > 0 && (
+                            <button
+                                onClick={() => setIsHistoryOpen(true)}
+                                className="flex-none flex items-center justify-between gap-3 px-5 py-2.5 bg-blue-500/10 border-b border-blue-500/20 text-left w-full"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm">🕐</span>
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-blue-300">AI 出力履歴を見る</span>
+                                </div>
+                                <span className="flex-none text-[10px] font-black bg-blue-500/30 text-blue-200 px-2.5 py-1 rounded-full">
+                                    {aiHistory.length} 件
+                                </span>
+                            </button>
+                        )}
 
                         {/* Content Area - Absolute positioning to force scroll container behavior */}
                         <div
@@ -545,20 +579,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 ) : pendingText ? (
                                     <>
                                         <div className="space-y-3 shrink-0">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-xs font-black uppercase tracking-widest text-white/50">対象テキスト</label>
-                                                {/* 履歴ボタン - 小さめで邪魔にならないように */}
-                                                {aiHistory.length > 0 && (
-                                                    <button
-                                                        onClick={() => setIsHistoryOpen(true)}
-                                                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white/70 transition-all text-[10px] font-bold uppercase tracking-widest"
-                                                        title="過去の履歴を見る"
-                                                    >
-                                                        <span style={{ fontSize: '10px' }}>🕐</span>
-                                                        <span>履歴 {aiHistory.length}</span>
-                                                    </button>
-                                                )}
-                                            </div>
+                                            <label className="text-xs font-black uppercase tracking-widest text-white/50">対象テキスト</label>
                                             <div className="p-6 bg-black/40 rounded-2xl border border-white/10">
                                                 <p className="text-sm text-white/80 leading-relaxed italic">{pendingText}</p>
                                             </div>
@@ -584,20 +605,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 ) : (
                                     <div className="flex flex-col gap-6">
                                         <div className="p-5 bg-black/40 rounded-2xl border border-white/10 shrink-0">
-                                            <div className="flex items-start justify-between gap-3 mb-2">
-                                                <p className="text-sm text-white/50 leading-relaxed italic flex-1">"{translationResult?.original}"</p>
-                                                {/* 履歴ボタン - 結果表示中も参照できる */}
-                                                {aiHistory.length > 1 && (
-                                                    <button
-                                                        onClick={() => setIsHistoryOpen(true)}
-                                                        className="flex-none flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white/70 transition-all text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
-                                                        title="過去の履歴を見る"
-                                                    >
-                                                        <span style={{ fontSize: '10px' }}>🕐</span>
-                                                        <span>履歴 {aiHistory.length}</span>
-                                                    </button>
-                                                )}
-                                            </div>
+                                            <p className="text-sm text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
                                         </div>
                                         <div className="p-6 md:p-8 bg-white text-black rounded-3xl shadow-2xl border border-black/10 shrink-0">
                                             <div className="prose prose-sm max-w-none text-black">

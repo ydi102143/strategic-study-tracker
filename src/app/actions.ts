@@ -528,6 +528,59 @@ export async function translateText(text: string) {
     }
 }
 
+// ----- AI History -----
+
+export async function saveAiHistory(input: {
+    material_id: string
+    page_number: number
+    original_text: string
+    translated_text: string
+    bounding_box?: { left: number; top: number; right: number; bottom: number }
+}) {
+    const supabase = await createClient()
+    const { data: authData } = await supabase.auth.getUser()
+    const user = authData?.user
+    if (!user) throw new Error('Unauthorized')
+
+    const { data, error } = await supabase
+        .from('ai_history')
+        .insert({
+            user_id: user.id,
+            material_id: input.material_id,
+            page_number: input.page_number,
+            original_text: input.original_text,
+            translated_text: input.translated_text,
+            bounding_box: input.bounding_box ?? null,
+        })
+        .select()
+        .single()
+
+    if (error) throw new Error('Failed to save AI history')
+    return data
+}
+
+export async function getAiHistory(material_id: string) {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('ai_history')
+        .select('*')
+        .eq('material_id', material_id)
+        .order('created_at', { ascending: false })
+
+    if (error) return []
+    return data || []
+}
+
+export async function deleteAiHistory(id: string) {
+    const supabase = await createClient()
+    const { error } = await supabase
+        .from('ai_history')
+        .delete()
+        .eq('id', id)
+
+    if (error) throw new Error('Failed to delete AI history')
+}
+
 export async function askAi(text: string, userPrompt?: string) {
     const cleanedText = cleanPdfText(text)
     if (!cleanedText || cleanedText.length === 0) return ""
