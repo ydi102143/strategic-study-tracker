@@ -57,7 +57,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         boundingBox: { left: number, top: number, right: number, bottom: number }
     }
     const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([])
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+    const [viewingHistoryItem, setViewingHistoryItem] = useState<AiHistoryItem | null>(null)
     const [pendingBoundingBox, setPendingBoundingBox] = useState<{ left: number, top: number, right: number, bottom: number } | null>(null)
 
     // Window Resize Handler - Maximize for iPad
@@ -175,7 +175,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
             // ツールバー、または AI アシスタントのモーダル内へのタッチは例外として許可する
             const target = e.target as HTMLElement;
-            if (target.closest('button') || target.closest('input') || target.closest('.ai-modal')) return;
+            if (target.closest('button') || target.closest('input') || target.closest('.ai-modal') || target.closest('.ai-history-popup')) return;
 
             if (e.cancelable) {
                 e.preventDefault()
@@ -505,7 +505,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                         .map((item, idx) => (
                             <button
                                 key={item.id}
-                                onClick={() => setIsHistoryOpen(true)}
+                                onClick={() => setViewingHistoryItem(item)}
                                 style={{
                                     position: 'absolute',
                                     left: `calc(${item.boundingBox.right * 100}% + 4px)`,
@@ -513,8 +513,8 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                     transform: 'translateY(-50%)',
                                     zIndex: 200,
                                 }}
-                                className="w-5 h-5 rounded-full bg-blue-500/80 hover:bg-blue-400 border border-blue-300/60 flex items-center justify-center text-white shadow-lg hover:scale-125 transition-transform"
-                                title={`AIの回答を見る（このページ ${aiHistory.filter(h => h.pageNumber === pageNumber).length}件）`}
+                                className="w-5 h-5 rounded-full bg-blue-500/80 active:bg-blue-400 border border-blue-300/60 flex items-center justify-center text-white shadow-lg active:scale-125 transition-transform"
+                                title="このAI回答を見る"
                             >
                                 <span style={{ fontSize: '8px', fontWeight: 'bold', lineHeight: 1 }}>AI</span>
                             </button>
@@ -546,22 +546,6 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 </button>
                             </div>
                         </div>
-
-                        {/* 履歴アクセスバー - 入力テキスト直上に常時表示（タッチ対応） */}
-                        {aiHistory.length > 0 && (
-                            <button
-                                onClick={() => setIsHistoryOpen(true)}
-                                className="flex-none flex items-center justify-between gap-3 px-5 py-2.5 bg-blue-500/10 border-b border-blue-500/20 text-left w-full"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm">🕐</span>
-                                    <span className="text-[11px] font-black uppercase tracking-widest text-blue-300">AI 出力履歴を見る</span>
-                                </div>
-                                <span className="flex-none text-[10px] font-black bg-blue-500/30 text-blue-200 px-2.5 py-1 rounded-full">
-                                    {aiHistory.length} 件
-                                </span>
-                            </button>
-                        )}
 
                         {/* Content Area - Absolute positioning to force scroll container behavior */}
                         <div
@@ -605,7 +589,9 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                                 ) : (
                                     <div className="flex flex-col gap-6">
                                         <div className="p-5 bg-black/40 rounded-2xl border border-white/10 shrink-0">
-                                            <p className="text-sm text-white/50 leading-relaxed italic">"{translationResult?.original}"</p>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <p className="text-sm text-white/50 leading-relaxed italic flex-1">"{translationResult?.original}"</p>
+                                            </div>
                                         </div>
                                         <div className="p-6 md:p-8 bg-white text-black rounded-3xl shadow-2xl border border-black/10 shrink-0">
                                             <div className="prose prose-sm max-w-none text-black">
@@ -629,85 +615,76 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 </div>
             )}
 
-            {/* AI History Popup */}
-            {isHistoryOpen && (
+            {/* AI History Single-Item Popup */}
+            {viewingHistoryItem && (
                 <div
-                    className="fixed inset-0 flex items-center justify-center p-4 md:p-10"
+                    className="fixed inset-0 flex items-center justify-center p-4 md:p-10 ai-history-popup"
                     style={{ zIndex: 10000 }}
-                    onClick={() => setIsHistoryOpen(false)}
+                    onClick={() => setViewingHistoryItem(null)}
                 >
                     {/* Backdrop */}
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
                     <div
-                        className="relative w-full max-w-2xl bg-[#1C1C1E] border border-white/10 rounded-[28px] flex flex-col shadow-[0_0_120px_rgba(0,0,0,1)] overflow-hidden"
+                        className="relative w-full max-w-2xl bg-[#1C1C1E] border border-white/10 rounded-[28px] flex flex-col shadow-[0_0_120px_rgba(0,0,0,1)] overflow-hidden ai-history-popup"
                         style={{ maxHeight: '80vh' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Popup Header */}
                         <div className="flex-none px-6 py-4 border-b border-white/10 bg-[#2C2C2E] flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <span className="text-sm">🕐</span>
-                                <span className="text-[11px] font-black uppercase tracking-widest text-white/60">AI 出力履歴</span>
-                                <span className="text-[10px] font-bold text-white/30 ml-1">
-                                    P.{pageNumber} ・ {aiHistory.filter(h => h.pageNumber === pageNumber).length}件
-                                </span>
+                                <Languages size={16} className="text-blue-400" />
+                                <span className="text-[11px] font-black uppercase tracking-widest text-white/60">AI 出力</span>
+                                <span className="text-[10px] font-bold text-white/30 ml-1">P.{viewingHistoryItem.pageNumber}</span>
                             </div>
-                            {/* ✕ 閉じるボタン（独立） */}
-                            <button
-                                onClick={() => setIsHistoryOpen(false)}
-                                className="p-2 -mr-2 rounded-full text-white/30 hover:text-white hover:bg-white/10 transition-all"
-                                title="閉じる"
-                            >
-                                <X size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {/* 削除ボタン */}
+                                <button
+                                    onClick={() => { deleteHistoryItem(viewingHistoryItem.id); setViewingHistoryItem(null) }}
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400/70 text-[10px] font-bold uppercase tracking-wider"
+                                >
+                                    <X size={10} strokeWidth={3} />
+                                    削除
+                                </button>
+                                {/* 閉じるボタン */}
+                                <button
+                                    onClick={() => setViewingHistoryItem(null)}
+                                    className="p-2 -mr-2 rounded-full text-white/30 hover:text-white hover:bg-white/10 transition-all"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Popup Content - Scrollable */}
-                        <div className="overflow-y-auto custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-                            {aiHistory.filter(h => h.pageNumber === pageNumber).length === 0 ? (
-                                <div className="p-10 text-center text-white/20 text-sm">このページに履歴はありません</div>
-                            ) : (
-                                <div className="p-4 space-y-3">
-                                    {aiHistory.filter(h => h.pageNumber === pageNumber).map((item, index) => (
-                                        <div
-                                            key={item.id}
-                                            className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden"
-                                        >
-                                            {/* 質問テキスト */}
-                                            <div className="px-4 py-3 bg-black/30 flex items-start justify-between gap-3">
-                                                <p className="text-[11px] text-white/40 italic leading-relaxed flex-1 line-clamp-2">
-                                                    &ldquo;{item.original}&rdquo;
-                                                </p>
-                                                {/* この履歴を削除するボタン */}
-                                                <button
-                                                    onClick={() => deleteHistoryItem(item.id)}
-                                                    className="flex-none flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400/60 hover:text-red-400 transition-all text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
-                                                    title="この履歴を削除"
-                                                >
-                                                    <X size={10} strokeWidth={3} />
-                                                    削除
-                                                </button>
-                                            </div>
-                                            {/* AI出力 */}
-                                            <div className="px-4 py-4 bg-white text-black rounded-b-2xl">
-                                                <div className="prose prose-sm max-w-none text-black text-[13px]">
-                                                    <ReactMarkdown
-                                                        remarkPlugins={[remarkMath]}
-                                                        rehypePlugins={[rehypeKatex]}
-                                                    >
-                                                        {(item.translated || '')
-                                                            .replace(/\\n/g, '\n')
-                                                            .replace(/\\{1,2}\[|\\{1,2}\]/g, '$$$$')
-                                                            .replace(/\\{1,2}\(|\\{1,2}\)/g, '$')
-                                                        }
-                                                    </ReactMarkdown>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                        {/* Popup Content - Scrollable (touch-action: pan-y でPencilモードでもスクロール可) */}
+                        <div
+                            className="overflow-y-auto custom-scrollbar ai-history-popup"
+                            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+                            onTouchMove={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-4 space-y-4 pb-6">
+                                {/* 元テキスト */}
+                                <div className="p-4 bg-black/40 rounded-2xl border border-white/10">
+                                    <p className="text-[11px] text-white/40 italic leading-relaxed">
+                                        &ldquo;{viewingHistoryItem.original}&rdquo;
+                                    </p>
                                 </div>
-                            )}
+                                {/* AI出力 */}
+                                <div className="px-4 py-5 bg-white text-black rounded-2xl">
+                                    <div className="prose prose-sm max-w-none text-black text-[13px]">
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkMath]}
+                                            rehypePlugins={[rehypeKatex]}
+                                        >
+                                            {(viewingHistoryItem.translated || '')
+                                                .replace(/\\n/g, '\n')
+                                                .replace(/\\{1,2}\[|\\{1,2}\]/g, '$$$$')
+                                                .replace(/\\{1,2}\(|\\{1,2}\)/g, '$')
+                                            }
+                                        </ReactMarkdown>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
