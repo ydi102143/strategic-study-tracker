@@ -115,25 +115,30 @@ export default async function Home({ searchParams }: PageProps) {
                                 {/* Category groups */}
                                 <div className="space-y-10">
                                     {catGroups.map((group, groupIdx) => (
-                                        <div key={groupIdx} className="grid grid-cols-4 gap-6">
-                                            {/* ラベル行：各カテゴリがアイテム数に比例したspan */}
-                                            {group.map(cat => (
-                                                <div
-                                                    key={cat.label}
-                                                    style={{ gridColumn: `span ${Math.min(cat.items.length, COLS)}` }}
-                                                    className={`flex items-center justify-center gap-2 pb-2 border-b border-white/10 ${cat.color}`}
-                                                >
-                                                    {cat.icon}
-                                                    <span className="text-xs font-bold uppercase tracking-widest">{cat.label}</span>
-                                                </div>
-                                            ))}
-                                            {/* アイテム：グループ内の全カテゴリを連続配置 */}
-                                            {group.flatMap(cat => cat.items).map(tb => (
-                                                <TextbookCard key={tb.id} material={tb} />
-                                            ))}
+                                        <div key={groupIdx} className="space-y-3">
+                                            {/* ラベル行：flex で比例幅（グリッドとは分離） */}
+                                            <div className="flex gap-6">
+                                                {group.map(cat => (
+                                                    <div
+                                                        key={cat.label}
+                                                        style={{ flex: Math.min(cat.items.length, COLS) }}
+                                                        className={`flex items-center justify-center gap-2 pb-2 border-b border-white/10 ${cat.color}`}
+                                                    >
+                                                        {cat.icon}
+                                                        <span className="text-xs font-bold uppercase tracking-widest">{cat.label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {/* アイテム：独立した 4列グリッド */}
+                                            <div className="grid grid-cols-4 gap-6">
+                                                {group.flatMap(cat => cat.items).map(tb => (
+                                                    <TextbookCard key={tb.id} material={tb} />
+                                                ))}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
+
                             </div>
                         )
                     })
