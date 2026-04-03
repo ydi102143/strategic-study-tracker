@@ -49,9 +49,17 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
     const [vh, setVh] = useState(0)
 
     // AI History State
-    const [aiHistory, setAiHistory] = useState<{ id: number, original: string, translated: string }[]>([])
+    type AiHistoryItem = {
+        id: number
+        original: string
+        translated: string
+        pageNumber: number
+        boundingBox: { left: number, top: number, right: number, bottom: number }
+    }
+    const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([])
     const [isHistoryOpen, setIsHistoryOpen] = useState(false)
     const [historyCounter, setHistoryCounter] = useState(0)
+    const [pendingBoundingBox, setPendingBoundingBox] = useState<{ left: number, top: number, right: number, bottom: number } | null>(null)
 
     // Window Resize Handler - Maximize for iPad
     useEffect(() => {
@@ -192,6 +200,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         setIsTranslating(true)
         setTranslationResult(null)
         setPendingText(null)
+        setPendingBoundingBox(boundingBox)
 
         try {
             const page = pdfPageRef.current
@@ -300,9 +309,10 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         try {
             const aiResponse = await askAi(capturedText, prompt)
             setTranslationResult({ original: capturedText, translated: aiResponse })
-            // 履歴に追加
+            // 履歴に追加（ページ番号＋位置情報付き）
+            const bbox = pendingBoundingBox || { left: 0, top: 0, right: 1, bottom: 0.1 }
             setAiHistory(prev => [
-                { id: historyCounter, original: capturedText, translated: aiResponse },
+                { id: historyCounter, original: capturedText, translated: aiResponse, pageNumber, boundingBox: bbox },
                 ...prev
             ])
             setHistoryCounter(c => c + 1)
@@ -459,6 +469,28 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                         lineWidth={lineWidth}
                         onTranslate={handleAiAssistant}
                     />
+
+                    {/* 現在ページの履歴マーカー - テキスト選択位置の右端に表示 */}
+                    {aiHistory
+                        .filter(item => item.pageNumber === pageNumber)
+                        .map((item, idx) => (
+                            <button
+                                key={item.id}
+                                onClick={() => setIsHistoryOpen(true)}
+                                style={{
+                                    position: 'absolute',
+                                    left: `calc(${item.boundingBox.right * 100}% + 4px)`,
+                                    top: `${((item.boundingBox.top + item.boundingBox.bottom) / 2) * 100}%`,
+                                    transform: 'translateY(-50%)',
+                                    zIndex: 200,
+                                }}
+                                className="w-5 h-5 rounded-full bg-blue-500/80 hover:bg-blue-400 border border-blue-300/60 flex items-center justify-center text-white shadow-lg hover:scale-125 transition-transform"
+                                title={`AIの回答を見る（このページ ${aiHistory.filter(h => h.pageNumber === pageNumber).length}件）`}
+                            >
+                                <span style={{ fontSize: '8px', fontWeight: 'bold', lineHeight: 1 }}>AI</span>
+                            </button>
+                        ))
+                    }
                 </div>
             </div>
 
@@ -589,21 +621,7 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                 </div>
             )}
 
-            {/* 常時表示の履歴フローティングボタン - テキストを囲まなくてもアクセス可能 */}
-            {aiHistory.length > 0 && !isHistoryOpen && (
-                <button
-                    onClick={() => setIsHistoryOpen(true)}
-                    className="fixed right-4 bottom-28 flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-black/60 backdrop-blur-md border border-white/15 text-white/50 hover:text-white hover:bg-black/80 hover:border-white/30 transition-all shadow-xl text-[11px] font-bold z-[700]"
-                    style={{ zIndex: 700 }}
-                    title="AIの過去の出力を見る"
-                >
-                    <span style={{ fontSize: '12px' }}>🕐</span>
-                    <span>履歴 {aiHistory.length}</span>
-                </button>
-            )}
-
             {/* AI History Popup */}
-
             {isHistoryOpen && (
                 <div
                     className="fixed inset-0 flex items-center justify-center p-4 md:p-10"
@@ -623,7 +641,9 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
                             <div className="flex items-center gap-2">
                                 <span className="text-sm">🕐</span>
                                 <span className="text-[11px] font-black uppercase tracking-widest text-white/60">AI 出力履歴</span>
-                                <span className="text-[10px] font-bold text-white/20 ml-1">{aiHistory.length}件</span>
+                                <span className="text-[10px] font-bold text-white/30 ml-1">
+                                    P.{pageNumber} ・ {aiHistory.filter(h => h.pageNumber === pageNumber).length}件
+                                </span>
                             </div>
                             {/* ✕ 閉じるボタン（独立） */}
                             <button
@@ -637,11 +657,11 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
 
                         {/* Popup Content - Scrollable */}
                         <div className="overflow-y-auto custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-                            {aiHistory.length === 0 ? (
-                                <div className="p-10 text-center text-white/20 text-sm">履歴はありません</div>
+                            {aiHistory.filter(h => h.pageNumber === pageNumber).length === 0 ? (
+                                <div className="p-10 text-center text-white/20 text-sm">このページに履歴はありません</div>
                             ) : (
                                 <div className="p-4 space-y-3">
-                                    {aiHistory.map((item, index) => (
+                                    {aiHistory.filter(h => h.pageNumber === pageNumber).map((item, index) => (
                                         <div
                                             key={item.id}
                                             className="rounded-2xl border border-white/8 bg-white/3 overflow-hidden"
