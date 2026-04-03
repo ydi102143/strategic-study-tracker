@@ -59,7 +59,7 @@ export default async function Home({ searchParams }: PageProps) {
                 <FilterBar fields={simpleFields} activeFieldId={activeFieldId} />
             </section>
 
-            <section className="space-y-24">
+            <section className="space-y-16">
                 {displayFields.length === 0 ? (
                     <div className="py-20 text-center border-2 border-dashed border-surface-3 rounded-3xl">
                         <h2 className="text-2xl font-bold uppercase tracking-widest text-gray-500">分野が見つかりません</h2>
@@ -69,7 +69,6 @@ export default async function Home({ searchParams }: PageProps) {
                     displayFields.map(field => {
                         if (!field || !field.id) return null
 
-                        // Filter materials that belong to this field AND are top-level items (no parent_id)
                         const fieldMaterials = allMaterials.filter(t => t && t.field_id === field.id && !t.parent_id)
                         const courses = fieldMaterials.filter(t => t.type === 'COURSE')
                         const textbooks = fieldMaterials.filter(t => t.type === 'TEXTBOOK')
@@ -78,8 +77,34 @@ export default async function Home({ searchParams }: PageProps) {
 
                         if (fieldMaterials.length === 0) return null
 
+                        // カテゴリ定義（空は除外）
+                        const COLS = 4
+                        const cats = [
+                            { label: '講座', items: courses, icon: <LayoutGrid size={14} />, color: 'text-orange-400' },
+                            { label: 'PDF', items: textbooks, icon: <BookOpen size={14} />, color: 'text-gray-300' },
+                            { label: '動画', items: movies, icon: <Video size={14} />, color: 'text-blue-400' },
+                            { label: 'Web', items: websites, icon: <ImageIcon size={14} />, color: 'text-purple-400' },
+                        ].filter(c => c.items.length > 0)
+
+                        // Bin-pack: 合計 ≤ 4 なら同じ行にまとめる
+                        const catGroups: (typeof cats)[] = []
+                        let curGroup: typeof cats = []
+                        let curCount = 0
+                        for (const cat of cats) {
+                            if (curGroup.length === 0 || curCount + cat.items.length <= COLS) {
+                                curGroup.push(cat)
+                                curCount += cat.items.length
+                            } else {
+                                catGroups.push(curGroup)
+                                curGroup = [cat]
+                                curCount = cat.items.length
+                            }
+                        }
+                        if (curGroup.length > 0) catGroups.push(curGroup)
+
                         return (
-                            <div key={field.id} className="space-y-12">
+                            <div key={field.id} className="space-y-6">
+                                {/* Field header */}
                                 <div className="flex items-center gap-6">
                                     <div className="h-[2px] flex-1 bg-surface-3" />
                                     <h2 className="text-2xl font-black uppercase tracking-[0.2em]">{field.name}</h2>
@@ -87,58 +112,34 @@ export default async function Home({ searchParams }: PageProps) {
                                     <div className="h-[2px] flex-1 bg-surface-3" />
                                 </div>
 
-                                {courses.length > 0 && (
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-center gap-3 text-orange-400">
-                                            <LayoutGrid size={20} />
-                                            <span className="text-sm font-bold uppercase tracking-widest">講座</span>
+                                {/* Category groups */}
+                                <div className="space-y-10">
+                                    {catGroups.map((group, groupIdx) => (
+                                        <div key={groupIdx} className="grid grid-cols-4 gap-6">
+                                            {/* ラベル行：各カテゴリがアイテム数に比例したspan */}
+                                            {group.map(cat => (
+                                                <div
+                                                    key={cat.label}
+                                                    style={{ gridColumn: `span ${Math.min(cat.items.length, COLS)}` }}
+                                                    className={`flex items-center justify-center gap-2 pb-2 border-b border-white/10 ${cat.color}`}
+                                                >
+                                                    {cat.icon}
+                                                    <span className="text-xs font-bold uppercase tracking-widest">{cat.label}</span>
+                                                </div>
+                                            ))}
+                                            {/* アイテム：グループ内の全カテゴリを連続配置 */}
+                                            {group.flatMap(cat => cat.items).map(tb => (
+                                                <TextbookCard key={tb.id} material={tb} />
+                                            ))}
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            {courses.map(tb => <TextbookCard key={tb.id} material={tb} />)}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {textbooks.length > 0 && (
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-center gap-3 text-gray-400">
-                                            <BookOpen size={20} />
-                                            <span className="text-sm font-bold uppercase tracking-widest">教科書 / PDF</span>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            {textbooks.map(tb => <TextbookCard key={tb.id} material={tb} />)}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {movies.length > 0 && (
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-center gap-3 text-gray-400 mt-12">
-                                            <Video size={20} />
-                                            <span className="text-sm font-bold uppercase tracking-widest">動画教材</span>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            {movies.map(tb => <TextbookCard key={tb.id} material={tb} />)}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {websites.length > 0 && (
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-center gap-3 text-gray-400 mt-12">
-                                            <ImageIcon size={20} />
-                                            <span className="text-sm font-bold uppercase tracking-widest">参考サイト / ドキュメント</span>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            {websites.map(tb => <TextbookCard key={tb.id} material={tb} />)}
-                                        </div>
-                                    </div>
-                                )}
+                                    ))}
+                                </div>
                             </div>
                         )
                     })
                 )}
             </section>
+
         </>
     )
 }
