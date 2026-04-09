@@ -3,6 +3,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/LogoutButton'
+import { ApiKeySettings } from '@/components/ApiKeySettings'
+import { getUserApiKeyMasked } from '@/app/actions'
 import Link from 'next/link'
 
 const inter = Inter({
@@ -46,7 +48,12 @@ export default async function RootLayout({
                     <Link href="/" className="text-2xl font-black tracking-tighter hover:opacity-80 transition-opacity">
                         Study Tracker
                     </Link>
-                    {user && <LogoutButton />}
+                    {user && (
+                        <div className="flex items-center gap-2">
+                            <ApiKeySettings initialMaskedKey={await getUserApiKeyMasked()} />
+                            <LogoutButton />
+                        </div>
+                    )}
                 </nav>
                 <main className="max-w-7xl mx-auto px-6 py-4 md:px-12">
                     {children}

@@ -581,15 +581,54 @@ export async function deleteAiHistory(id: string) {
     if (error) throw new Error('Failed to delete AI history')
 }
 
+// ----- User Settings (APIキー管理) -----
+
+export async function saveUserApiKey(apiKey: string) {
+    const supabase = await createClient()
+    const { data: authData } = await supabase.auth.getUser()
+    const user = authData?.user
+    if (!user) throw new Error('Unauthorized')
+
+    const { error } = await supabase
+        .from('user_settings')
+        .upsert({ user_id: user.id, gemini_api_key: apiKey.trim(), updated_at: new Date().toISOString() })
+
+    if (error) throw new Error('Failed to save API key')
+}
+
+export async function getUserApiKey(): Promise<string | null> {
+    const supabase = await createClient()
+    const { data: authData } = await supabase.auth.getUser()
+    const user = authData?.user
+    if (!user) return null
+
+    const { data } = await supabase
+        .from('user_settings')
+        .select('gemini_api_key')
+        .eq('user_id', user.id)
+        .single()
+
+    return data?.gemini_api_key || null
+}
+
+export async function getUserApiKeyMasked(): Promise<string | null> {
+    const key = await getUserApiKey()
+    if (!key) return null
+    if (key.length <= 8) return '••••••••'
+    return key.substring(0, 6) + '••••••••' + key.substring(key.length - 4)
+}
+
 export async function askAi(text: string, userPrompt?: string) {
     const cleanedText = cleanPdfText(text)
     if (!cleanedText || cleanedText.length === 0) return ""
 
-    // ユーザー指定の環境変数名、または既存の設定名から取得
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    // 1. ユーザー個人のAPIキー（Supabase）を優先
+    // 2. なければ環境変数のフォールバックキーを使用
+    const userKey = await getUserApiKey()
+    const apiKey = userKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
     if (!apiKey) {
-        return "AI API Keyが設定されていません。Vercelまたは.envでGEMINI_API_KEYを設定してください。"
+        return "AI API Keyが設定されていません。画面右上の設定⚙️からGemini API Keyを登録してください。"
     }
 
     try {

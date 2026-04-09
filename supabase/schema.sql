@@ -155,3 +155,33 @@ USING (
     bucket_id = 'materials' AND
     (storage.foldername(name))[1] = auth.uid()::text
 );
+
+
+-- ==========================================
+-- 5. User Settings Table (個人設定・APIキー管理)
+-- ==========================================
+-- SupabaseのSQL Editorで以下を実行してください
+create table if not exists public.user_settings (
+  user_id uuid references auth.users(id) on delete cascade primary key,
+  gemini_api_key text,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS
+alter table public.user_settings enable row level security;
+
+create policy "Users can view their own settings"
+  on public.user_settings for select
+  using ( auth.uid() = user_id );
+
+create policy "Users can insert their own settings"
+  on public.user_settings for insert
+  with check ( auth.uid() = user_id );
+
+create policy "Users can update their own settings"
+  on public.user_settings for update
+  using ( auth.uid() = user_id );
+
+create policy "Users can delete their own settings"
+  on public.user_settings for delete
+  using ( auth.uid() = user_id );
