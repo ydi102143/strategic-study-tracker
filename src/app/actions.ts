@@ -612,23 +612,30 @@ export async function getUserApiKey(): Promise<string | null> {
 }
 
 export async function getUserApiKeyMasked(): Promise<string | null> {
-    const key = await getUserApiKey()
-    if (!key) return null
-    if (key.length <= 8) return '••••••••'
-    return key.substring(0, 6) + '••••••••' + key.substring(key.length - 4)
+    try {
+        const key = await getUserApiKey()
+        if (!key) return null
+        if (key.length <= 8) return '••••••••'
+        return key.substring(0, 6) + '••••••••' + key.substring(key.length - 4)
+    } catch {
+        return null
+    }
 }
 
 export async function askAi(text: string, userPrompt?: string) {
     const cleanedText = cleanPdfText(text)
     if (!cleanedText || cleanedText.length === 0) return ""
 
-    // 1. ユーザー個人のAPIキー（Supabase）を優先
-    // 2. なければ環境変数のフォールバックキーを使用
-    const userKey = await getUserApiKey()
-    const apiKey = userKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    // 各ユーザーが個人で設定したAPIキーのみ使用（フォールバックなし・必須）
+    let apiKey: string | null = null
+    try {
+        apiKey = await getUserApiKey()
+    } catch {
+        return "APIキーの取得に失敗しました。ページをリロードしてください。"
+    }
 
     if (!apiKey) {
-        return "AI API Keyが設定されていません。画面右上の設定⚙️からGemini API Keyを登録してください。"
+        return "__NO_API_KEY__"
     }
 
     try {

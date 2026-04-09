@@ -322,6 +322,18 @@ export function PdfViewer({ materialId, pdfUrl, initialPage, totalPageCount }: P
         const capturedText = pendingText
         try {
             const aiResponse = await askAi(capturedText, prompt)
+
+            // APIキー未設定の場合はエラーとして表示（履歴には保存しない）
+            if (aiResponse === '__NO_API_KEY__') {
+                setTranslationResult({
+                    original: capturedText,
+                    translated: '⚠️ Gemini APIキーが設定されていません。\n\nナビバーの **⚙️ 設定** から自分のAPIキーを登録してください。\n\n[Google AI Studio](https://aistudio.google.com/app/apikey) から無料で取得できます。'
+                })
+                setPendingText(null)
+                setIsTranslating(false)
+                return
+            }
+
             setTranslationResult({ original: capturedText, translated: aiResponse })
             // Supabase に保存してから履歴を更新
             const bbox = pendingBoundingBox || { left: 0, top: 0, right: 1, bottom: 0.1 }
